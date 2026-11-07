@@ -65,7 +65,7 @@ export function EmptyState({ icon = <IconMissingRecord size={30} strokeWidth={3}
             width: 52,
             height: 52,
             background: "var(--bg-ink)",
-            color: "#fff",
+            color: "var(--on-plate)",
             display: "grid",
             placeItems: "center",
             fontSize: 20,

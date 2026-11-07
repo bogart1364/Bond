@@ -292,7 +292,7 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
                 letterSpacing: "0.2em",
                 textTransform: "uppercase",
                 background: "var(--bg-ink)",
-                color: "#efe9dc",
+                color: "var(--plate-bar)",
                 padding: "9px 14px",
                 display: "flex",
                 justifyContent: "space-between",
@@ -567,25 +567,25 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
           </div>
 
           <div className="card card--ink">
-            <span className="eyebrow" style={{ color: "#6f6c63" }}>
+            <span className="eyebrow" style={{ color: "var(--plate-muted-dim)" }}>
               Custody model
             </span>
-            <p style={{ marginTop: 12, fontSize: "var(--text-sm)", lineHeight: 1.7, color: "#c9c7c0" }}>
+            <p style={{ marginTop: 12, fontSize: "var(--text-sm)", lineHeight: 1.7, color: "var(--plate-copy)" }}>
               Funds sit in the open-source{" "}
-              <span className="mono" style={{ color: "#fff" }}>EscrowLink</span>{" "}
+              <span className="mono" style={{ color: "var(--on-plate)" }}>EscrowLink</span>{" "}
               contract. No admin, no bank, no intermediary can move escrowed principal — only the protocol fee
               is collected, and only on completion.
             </p>
             <div className="row gap-2" style={{ marginTop: 18, flexWrap: "wrap" }}>
               <span
                 className="mono"
-                style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#9d9a90", border: "1px solid #33322c", padding: "6px 10px" }}
+                style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--plate-muted-chip)", border: "1px solid var(--plate-rule-3)", padding: "6px 10px" }}
               >
                 Non-custodial
               </span>
               <span
                 className="mono"
-                style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#9d9a90", border: "1px solid #33322c", padding: "6px 10px" }}
+                style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--plate-muted-chip)", border: "1px solid var(--plate-rule-3)", padding: "6px 10px" }}
               >
                 Immutable fee cap
               </span>

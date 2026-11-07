@@ -11,10 +11,27 @@
       content="Bond locks USDC in a verifiable on-chain escrow. The payer shares a link, the payee delivers, and funds move only by the contract's rules — or an arbiter's ruling. Non-custodial, source verified, no account required."
     />
     <meta name="author" content="Bond" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#0052FF" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://bond.example/" />
+
+    <!-- Edition selection runs before first paint: stored choice wins,
+         otherwise the OS preference. No flash of the wrong paper. -->
+    <script>
+      (function () {
+        var theme = null;
+        try {
+          theme = localStorage.getItem("bond-theme");
+        } catch (e) {
+          theme = null;
+        }
+        if (theme !== "light" && theme !== "dark") {
+          theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />

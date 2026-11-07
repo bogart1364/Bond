@@ -73,8 +73,8 @@ export function EscrowCreatedCard({ id, link, onReset }: Props) {
                 width: 44,
                 height: 44,
                 borderRadius: 0,
-                background: "var(--success-fg)",
-                color: "#fff",
+                background: "var(--success-solid)",
+                color: "var(--on-plate)",
                 display: "grid",
                 placeItems: "center",
               }}

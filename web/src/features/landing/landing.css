@@ -278,7 +278,7 @@ html {
 .ld-ticker {
   overflow: hidden;
   background: var(--bg-ink);
-  color: #efe9dc;
+  color: var(--plate-bar);
   border-top: 1px solid var(--border-ink);
   border-bottom: 1px solid var(--border-ink);
 }
@@ -462,7 +462,7 @@ html {
   height: 56px;
   margin-bottom: 16px;
   background: var(--brand);
-  color: #f4f0e6;
+  color: var(--on-brand);
   border: 1px solid var(--border-ink);
   /* letterpress: a hard ink offset, no blur — nothing soft in a print shop */
   box-shadow: 3px 3px 0 rgba(22, 19, 15, 0.16);
@@ -498,7 +498,7 @@ html {
 
 .ld-cta {
   background: var(--bg-ink);
-  color: #f4f0e6;
+  color: var(--plate-title);
   border-top: 4px double var(--border-ink);
   padding: 74px 0;
   position: relative;
@@ -506,28 +506,28 @@ html {
 }
 
 .ld-cta h2 {
-  color: #f7f3ea;
+  color: var(--plate-bright);
   /* One line: 775px caps the 720px measure, 55px = gutters + margin. */
   font-size: min(clamp(32px, 4.6vw, 54px), calc((min(100vw, 775px) - 55px) / 12.442));
   max-width: 720px;
 }
 
 .ld-cta p {
-  color: #b7b1a3;
+  color: var(--plate-body);
   max-width: 560px;
   margin-top: 16px;
   line-height: 1.7;
 }
 
 .ld-cta .btn--secondary {
-  color: #f4f0e6;
-  border-color: #6b655a;
+  color: var(--plate-title);
+  border-color: var(--plate-rule-strong);
 }
 
 .ld-cta .btn--secondary:hover:not(:disabled) {
-  background: #f4f0e6;
-  color: var(--text-1);
-  border-color: #f4f0e6;
+  background: var(--plate-title);
+  color: var(--bg-ink);
+  border-color: var(--plate-title);
 }
 
 /* Faint press-registration decoration */

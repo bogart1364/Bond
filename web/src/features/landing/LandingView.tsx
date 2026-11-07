@@ -511,7 +511,7 @@ export function LandingView({ chainId }: { chainId: number }) {
         </span>
         <div className="ld-wrap" style={{ position: "relative" }}>
           <Reveal variant="rise">
-            <span className="eyebrow" style={{ color: "#8b8577" }}>
+            <span className="eyebrow" style={{ color: "var(--plate-muted)" }}>
               Last edition
             </span>
             <h2 style={{ marginTop: 14 }}>Put it in writing. On-chain.</h2>

@@ -1,7 +1,9 @@
 /* ============================================================
-   Bond Design System — Tokens v3
+   Bond Design System — Tokens v4
    "Criminal press": aged newsprint, black printer's ink,
    rubber-stamp red, second ink blue, typewriter labels.
+   Two editions share one system: :root is the day print run,
+   [data-theme="dark"] is Shabnameh, the night press.
    ============================================================ */
 
 :root {
@@ -109,7 +111,106 @@
   --card-padding: 28px;
   --gutter: 32px;
 
+  /* ── Ink plates: the printed black blocks ───────────────
+     Footer, card--ink, ticker, CTA band and classified bars
+     are ink in BOTH editions — only their hairline edge is
+     theme-aware so a plate stays framed on night paper. */
+  --plate-edge: #16130f;
+  --plate-text: #e8e3d7;
+  --plate-title: #f4f0e6;
+  --plate-bright: #f7f2ec;
+  --plate-bar: #efe9dc;
+  --plate-body: #b7b1a3;
+  --plate-copy: #c9c7c0;
+  --plate-link: #d9d3c5;
+  --plate-addr: #c9c3b5;
+  --plate-chip: #a8a294;
+  --plate-muted: #8b8577;
+  --plate-muted-soft: #9d978a;
+  --plate-muted-chip: #9d9a90;
+  --plate-muted-dim: #6f6c63;
+  --plate-muted-icon: #7d7768;
+  --plate-rule: #302c25;
+  --plate-rule-2: #3a352d;
+  --plate-rule-3: #33322c;
+  --plate-rule-strong: #6b655a;
+
+  /* ── Text on saturated fills (both editions) ──────────── */
+  --on-brand: #f7f2ec;
+  --on-plate: #ffffff;
+
+  /* ── Solid status stamps: fill behind a white glyph ───── */
+  --success-solid: #124a33;
+  --warning-solid: #6d4a08;
+  --danger-solid: #78170f;
+  --info-solid: #1a3060;
+
+  /* ── Field paper + registration marks ─────────────────── */
+  --bg-input: #faf7ef;
+  --crop-mark: #ffffff;
+
   color-scheme: light;
+}
+
+/* ============================================================
+   Shabnameh — the night-press edition.
+   Not an inversion: ink-black paper, cream type, the same Base
+   blue, status stamps lightened just enough to hold contrast.
+   The ShareCard QR and the evidence PDF stay on light stock.
+   ============================================================ */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── Brand: Base blue holds; soft tints turn ink-blue ── */
+  --brand-soft: #16294f;
+  --brand-softer: #101f3d;
+  --text-brand: #7ea6ff;
+
+  /* ── Surfaces: night press ───────────────────────────── */
+  --bg-page: #14120e;
+  --bg-page-alt: #191713;
+  --bg-card: #1b1813;
+  --bg-subtle: #221e18;
+  --bg-inset: #17150f;
+  --bg-input: #201d16;
+  --bg-ink: #0c0b08;
+  --bg-overlay: rgba(8, 7, 5, 0.72);
+  --plate-edge: #33302a;
+
+  /* ── Text: cream printer's ink ───────────────────────── */
+  --text-1: #e8e3d7;
+  --text-2: #b5afa1;
+  --text-3: #8b8577;
+
+  /* ── Hairlines: rules print cream on night paper ─────── */
+  --border: #33302a;
+  --border-soft: #2a2721;
+  --border-strong: #4f4a41;
+  --border-ink: #c9c3b5;
+  --border-focus: #6f9bff;
+
+  /* ── Status: stamps lightened for dark stock ─────────── */
+  --success: #3f9e73;
+  --success-fg: #6fc79c;
+  --success-soft: #12241c;
+  --success-border: #1f4433;
+  --success-solid: #1c5c40;
+  --warning: #c9922b;
+  --warning-fg: #e0b055;
+  --warning-soft: #26200f;
+  --warning-border: #4d4020;
+  --warning-solid: #7a5410;
+  --danger: #d8483c;
+  --danger-fg: #f08a7d;
+  --danger-soft: #2b1512;
+  --danger-border: #5c2b24;
+  --danger-solid: #8f2018;
+  --info: #7f9ce6;
+  --info-fg: #a7bef5;
+  --info-soft: #17202f;
+  --info-border: #33436a;
+  --info-solid: #274073;
 }
 
 .tnum {
@@ -132,5 +233,5 @@
   font-size: var(--text-2xs);
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: var(--brand);
+  color: var(--text-brand);
 }

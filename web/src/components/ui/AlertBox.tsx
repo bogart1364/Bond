@@ -75,7 +75,7 @@ export function AlertBox({
             style={{
               background: "transparent",
               border: "0",
-              color: "#efe9dc",
+              color: "var(--plate-bar)",
               cursor: "pointer",
               fontFamily: "var(--font-mono)",
               fontSize: 11,

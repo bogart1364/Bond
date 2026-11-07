@@ -8,6 +8,7 @@ import { DocsView, isDocSlug, type DocSlug } from "../features/docs/DocsView";
 import { IconExternal, IconMenu } from "../components/ui/Icons";
 import { escrowAddressFor, ESCROW_ABI, parseEscrowLink, homeChainId } from "../lib/contracts";
 import { isSupportedChain, chainLabel, explorerAddressUrl } from "../lib/chains";
+import { useTheme } from "../lib/theme";
 import { PAUSED_BANNER } from "../lib/errors";
 
 // Computed once at module load: a newspaper edition line and a copyright year
@@ -75,6 +76,11 @@ export function App() {
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const wrongChain = isConnected && !supported;
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Edition switch: day print run or Shabnameh night press.
+  const { theme, toggleTheme } = useTheme();
+  const themeLabel = theme === "dark" ? "DAY" : "NIGHT";
+  const themeAction = theme === "dark" ? "Switch to the day edition" : "Switch to the night edition";
 
   // Escape folds the mobile menu back up, matching the modal behaviour.
   useEffect(() => {
@@ -162,6 +168,16 @@ export function App() {
             <span className="mast-menu-label">{menuOpen ? "Close" : "Menu"}</span>
           </button>
 
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm mast-theme"
+            onClick={toggleTheme}
+            aria-label={themeAction}
+            title={themeAction}
+          >
+            {themeLabel}
+          </button>
+
           <WalletButton />
         </div>
 
@@ -183,6 +199,17 @@ export function App() {
                 Docs
               </a>
             </nav>
+            <div className="mast-panel__theme">
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={toggleTheme}
+                aria-label={themeAction}
+                title={themeAction}
+              >
+                {theme === "dark" ? "Day edition" : "Night edition"}
+              </button>
+            </div>
           </div>
         )}
       </header>
@@ -335,7 +362,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
       style={{
         borderTop: "4px double var(--border-ink)",
         background: "var(--bg-ink)",
-        color: "#e8e3d7",
+        color: "var(--plate-text)",
         marginTop: "auto",
       }}
     >
@@ -348,7 +375,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
             gap: 24,
             flexWrap: "wrap",
             padding: "34px 0 20px",
-            borderBottom: "1px solid #302c25",
+            borderBottom: "1px solid var(--plate-rule)",
           }}
         >
           <div className="row" style={{ gap: 14, alignItems: "baseline", flexWrap: "wrap" }}>
@@ -358,7 +385,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 width: 30,
                 height: 30,
                 background: "var(--brand)",
-                color: "#f7f2ec",
+                color: "var(--plate-bright)",
                 display: "grid",
                 placeItems: "center",
                 fontSize: 16,
@@ -375,7 +402,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 fontWeight: 900,
                 letterSpacing: "-0.03em",
                 lineHeight: 1,
-                color: "#f4f0e6",
+                color: "var(--plate-title)",
               }}
             >
               Bond
@@ -386,7 +413,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 fontSize: 10.5,
                 letterSpacing: "0.2em",
                 textTransform: "uppercase",
-                color: "#8b8577",
+                color: "var(--plate-muted)",
               }}
             >
               The non-custodial escrow record
@@ -395,7 +422,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
 
           <span
             className="mono"
-            style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8b8577" }}
+            style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--plate-muted)" }}
           >
             Vol. I — No. 1 · Printed on Base
           </span>
@@ -404,7 +431,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
         {/* Columns */}
         <div className="footer-grid">
           <div>
-            <p style={{ fontSize: 15, lineHeight: 1.75, color: "#b7b1a3", maxWidth: 340 }}>
+            <p style={{ fontSize: 15, lineHeight: 1.75, color: "var(--plate-body)", maxWidth: 340 }}>
               Non-custodial escrow infrastructure on Base. Funds are locked in open-source,
               source-verified code and released only on confirmation — never held by us.
             </p>
@@ -418,8 +445,8 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                     fontSize: 10,
                     letterSpacing: "0.16em",
                     textTransform: "uppercase",
-                    color: "#a8a294",
-                    border: "1px solid #3a352d",
+                    color: "var(--plate-chip)",
+                    border: "1px solid var(--plate-rule-2)",
                     padding: "6px 10px",
                   }}
                 >
@@ -458,15 +485,15 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
             style={{
               gap: 18,
               padding: "16px 0",
-              borderTop: "1px solid #302c25",
-              borderBottom: "1px solid #302c25",
+              borderTop: "1px solid var(--plate-rule)",
+              borderBottom: "1px solid var(--plate-rule)",
               flexWrap: "wrap",
               justifyContent: "space-between",
             }}
           >
             <span
               className="mono"
-              style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8b8577" }}
+              style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--plate-muted)" }}
             >
               EscrowLink contract
             </span>
@@ -475,7 +502,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
               target="_blank"
               rel="noopener noreferrer"
               className="mono footer-addr"
-              style={{ color: "#c9c3b5", display: "inline-flex", gap: 6, alignItems: "center" }}
+              style={{ color: "var(--plate-addr)", display: "inline-flex", gap: 6, alignItems: "center" }}
             >
               {contract}
               <IconExternal size={12} strokeWidth={3} />
@@ -495,7 +522,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
             fontSize: 11,
             letterSpacing: "0.12em",
             textTransform: "uppercase",
-            color: "#8b8577",
+            color: "var(--plate-muted)",
           }}
         >
           <span>© {year} Bond Protocol — All rights reserved</span>
@@ -507,7 +534,7 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 style={{
                   width: 6,
                   height: 6,
-                  background: contract ? "var(--success)" : "#8b8577",
+                  background: contract ? "var(--success)" : "var(--plate-muted)",
                   display: "inline-block",
                 }}
               />
@@ -520,13 +547,13 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                   : `No deployment on ${chainLabel(chainId)}`}
               </span>
             </span>
-            <a href="?view=doc&doc=status" style={{ color: "#a8a294" }}>
+            <a href="?view=doc&doc=status" style={{ color: "var(--plate-chip)" }}>
               Status
             </a>
-            <a href="?view=doc&doc=terms" style={{ color: "#a8a294" }}>
+            <a href="?view=doc&doc=terms" style={{ color: "var(--plate-chip)" }}>
               Terms
             </a>
-            <a href="?view=doc&doc=privacy" style={{ color: "#a8a294" }}>
+            <a href="?view=doc&doc=privacy" style={{ color: "var(--plate-chip)" }}>
               Privacy
             </a>
           </div>

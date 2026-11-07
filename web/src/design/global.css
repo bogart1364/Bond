@@ -98,7 +98,7 @@ a {
 }
 
 a:hover {
-  color: var(--brand);
+  color: var(--text-brand);
 }
 
 button,
@@ -117,7 +117,7 @@ textarea {
 
 ::selection {
   background: var(--brand);
-  color: #f4f0e6;
+  color: var(--on-brand);
 }
 
 /* Drop cap — front-page deck paragraph */
@@ -148,7 +148,7 @@ textarea {
 .crop::after {
   content: "";
   position: absolute;
-  background: #fff;
+  background: var(--crop-mark);
 }
 .crop::before {
   left: 50%;
@@ -287,13 +287,13 @@ textarea {
 
 .card--ink {
   background: var(--bg-ink);
-  color: #f4f0e6;
-  border-color: var(--bg-ink);
+  color: var(--plate-title);
+  border-color: var(--plate-edge);
 }
 
 .card--ink .muted,
 .card--ink .small.muted {
-  color: #9d978a;
+  color: var(--plate-muted-soft);
 }
 
 /* ── Section header: index + heavy rule ─────────────────── */
@@ -347,7 +347,7 @@ textarea {
 
 .btn--primary {
   background: var(--brand);
-  color: #f7f2ec;
+  color: var(--on-brand);
   box-shadow: var(--shadow-btn);
 }
 
@@ -373,9 +373,9 @@ textarea {
 }
 
 .btn--danger:hover:not(:disabled) {
-  background: var(--danger-fg);
-  border-color: var(--danger-fg);
-  color: #f7f2ec;
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  color: var(--on-plate);
 }
 
 .btn--ghost {
@@ -451,7 +451,7 @@ textarea {
   border-color: var(--border-strong);
 }
 .badge--brand {
-  color: var(--brand);
+  color: var(--text-brand);
   background: var(--brand-softer);
   border-color: var(--brand);
 }
@@ -543,7 +543,7 @@ textarea {
   border: 1px solid var(--border-strong);
   border-bottom: 2px solid var(--border-ink);
   border-radius: var(--radius-input);
-  background: #faf7ef;
+  background: var(--bg-input);
   color: var(--text-1);
   font-family: var(--font-mono);
   font-size: 14px;
@@ -674,7 +674,7 @@ textarea.field__input {
 }
 
 .mast-nav a:hover {
-  color: var(--brand);
+  color: var(--text-brand);
 }
 
 .mast-date {
@@ -720,6 +720,23 @@ textarea.field__input {
   display: none;
 }
 
+/* Edition switch: the day print run or Shabnameh, the night press.
+   Narrow screens fold it into the menu panel below. */
+.mast-theme {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .mast-theme {
+    display: none;
+  }
+}
+
+.mast-panel__theme {
+  padding: 12px var(--gutter) 14px;
+  border-top: 1px dashed var(--border-strong);
+}
+
 /* ── Mobile panel: the folded edition ─────────────────────── */
 .mast-panel {
   border-top: 1px solid var(--border);
@@ -762,7 +779,7 @@ textarea.field__input {
 }
 
 .mast-panel__links a:hover {
-  color: var(--brand);
+  color: var(--text-brand);
   background: var(--bg-subtle);
 }
 
@@ -877,9 +894,9 @@ textarea.field__input {
   font-style: italic;
   font-weight: 700;
   font-size: 18px;
-  color: #f4f0e6;
+  color: var(--plate-title);
   padding-bottom: 12px;
-  border-bottom: 1px solid #3a352d;
+  border-bottom: 1px solid var(--plate-rule-2);
   margin-bottom: 15px;
 }
 
@@ -899,18 +916,18 @@ textarea.field__input {
   font-family: var(--font-sans);
   font-size: 14.5px;
   font-weight: 600;
-  color: #d9d3c5;
+  color: var(--plate-link);
   text-decoration: none;
 }
 
 .footer-link:hover {
-  color: #ffffff;
+  color: var(--plate-bright);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 .footer-link svg {
-  color: #7d7768;
+  color: var(--plate-muted-icon);
   flex-shrink: 0;
 }
 
@@ -955,7 +972,7 @@ textarea.field__input {
   align-items: center;
   gap: 12px;
   background: var(--bg-ink);
-  color: #efe9dc;
+  color: var(--plate-bar);
   padding: 7px 14px;
   font-family: var(--font-mono);
   font-size: 10px;
@@ -1020,7 +1037,7 @@ textarea.field__input {
 .alertbox__pre {
   margin: 9px 0 0;
   padding: 11px 13px;
-  background: #efe9dc;
+  background: var(--bg-subtle);
   border: 1px dashed var(--border-strong);
   font-family: var(--font-mono);
   font-size: 11.5px;

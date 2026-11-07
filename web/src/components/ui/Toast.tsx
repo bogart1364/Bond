@@ -9,12 +9,15 @@ import { ToastCtx, type ToastApi, type ToastItem, type ToastTone } from "./toast
  * purpose: declining is not an error and must not look like one.
  */
 
-/** Tone -> engraved glyph. Icons, never emoji — see Icons.tsx. */
-const TONE_STYLE: Record<ToastTone, { bg: string; border: string; fg: string; icon: ReactNode }> = {
-  neutral: { bg: "var(--bg-card)", border: "var(--border-strong)", fg: "var(--text-1)", icon: <IconDot size={12} /> },
-  success: { bg: "var(--success-soft)", border: "var(--success-border)", fg: "var(--success-fg)", icon: <IconCheck size={13} strokeWidth={4} /> },
-  warning: { bg: "var(--warning-soft)", border: "var(--warning-border)", fg: "var(--warning-fg)", icon: <IconWarning size={13} strokeWidth={3.5} /> },
-  error: { bg: "var(--danger-soft)", border: "var(--danger-border)", fg: "var(--danger-fg)", icon: <IconCross size={12} strokeWidth={4} /> },
+/** Tone -> engraved glyph. Icons, never emoji — see Icons.tsx.
+ *  `solid` is the stamp behind the white glyph: the -fg token flips to a
+ *  light ink in the night edition, which cannot hold a white icon, so the
+ *  fill keeps its own dark value in both editions. */
+const TONE_STYLE: Record<ToastTone, { bg: string; border: string; fg: string; solid: string; icon: ReactNode }> = {
+  neutral: { bg: "var(--bg-card)", border: "var(--border-strong)", fg: "var(--text-1)", solid: "var(--bg-ink)", icon: <IconDot size={12} /> },
+  success: { bg: "var(--success-soft)", border: "var(--success-border)", fg: "var(--success-fg)", solid: "var(--success-solid)", icon: <IconCheck size={13} strokeWidth={4} /> },
+  warning: { bg: "var(--warning-soft)", border: "var(--warning-border)", fg: "var(--warning-fg)", solid: "var(--warning-solid)", icon: <IconWarning size={13} strokeWidth={3.5} /> },
+  error: { bg: "var(--danger-soft)", border: "var(--danger-border)", fg: "var(--danger-fg)", solid: "var(--danger-solid)", icon: <IconCross size={12} strokeWidth={4} /> },
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -88,8 +91,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 style={{
                   width: 20,
                   height: 20,
-                  background: s.fg,
-                  color: "#fff",
+                  background: s.solid,
+                  color: "var(--on-plate)",
                   display: "grid",
                   placeItems: "center",
                   flexShrink: 0,
