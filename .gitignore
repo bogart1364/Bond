@@ -1,0 +1,33 @@
+# ── Secrets — never commit ────────────────────────────────
+.env
+.env.*
+!.env.example
+!web/.env.example
+
+# ── Foundry ────────────────────────────────────────────────
+out/
+cache/
+broadcast/
+# forge doc output. NOTE: lib/ is deliberately NOT ignored — OZ v5.7.0 and
+# forge-std are vendored (not submodules), so CI needs them from the repo.
+docs/
+
+# ── Node / Vite ────────────────────────────────────────────
+node_modules/
+web/dist/
+web/dist-ssr/
+*.local
+
+# ── Vendored tool binaries (re-downloadable) ───────────────
+tools/*.exe
+
+# ── Editor / OS ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ── Logs ───────────────────────────────────────────────────
+*.log
+npm-debug.log*

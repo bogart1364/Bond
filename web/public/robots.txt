@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Escrow records are addressable by query string; keep crawlers on the
+# canonical marketing/docs pages.
+Disallow: /?escrow=
+Disallow: /?view=
+
+Sitemap: https://bond.example/sitemap.xml

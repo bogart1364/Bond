@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Contracts (forge)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Cache forge
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.foundry/cache
+            cache
+            out
+          key: forge-${{ runner.os }}-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'test/**/*.sol') }}
+
+      - name: forge fmt --check
+        run: forge fmt --check
+
+      - name: forge lint
+        run: forge lint
+
+      - name: forge build
+        run: forge build --sizes
+
+      - name: forge test
+        run: forge test -vvv
+
+      - name: Frontend ABI matches the compiled contract
+        run: |
+          node scripts/sync-abi.mjs
+          git diff --exit-code -- web/src/lib/abi.json web/public/abi.json || {
+            echo "::error::web/src/lib/abi.json or web/public/abi.json is stale. Run: node scripts/sync-abi.mjs"
+            exit 1
+          }
+
+  frontend:
+    name: Frontend (tsc + vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npx vite build
+        env:
+          VITE_ESCROW_ADDRESS_BASE_SEPOLIA: "0xeE6aeefd36BdCbD699AfE5dDdf35D0673C16Ae3b"
+          VITE_ESCROW_DEPLOY_BLOCK: "55335004"
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+          retention-days: 7
+
+  glyphs:
+    name: Glyph policy (no emoji, no symbols)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Scan
+        run: node scripts/scan-glyphs.mjs
+
+  secrets:
+    name: Secret hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail if a .env or private key is tracked
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '(^|/)\.env(\.|$)' | grep -v '\.env\.example$'; then
+            echo "::error::A .env file is tracked by git. Remove it and rotate every key inside."
+            exit 1
+          fi
+          if git grep -nE 'PRIVATE_KEY[ ]*=[ ]*0x[0-9a-fA-F]{64}' -- . ':(exclude)*.example'; then
+            echo "::error::A raw private key is committed. Rotate it immediately."
+            exit 1
+          fi
+          echo "clean"

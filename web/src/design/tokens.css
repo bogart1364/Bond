@@ -1,0 +1,136 @@
+/* ============================================================
+   Bond Design System — Tokens v3
+   "Criminal press": aged newsprint, black printer's ink,
+   rubber-stamp red, second ink blue, typewriter labels.
+   ============================================================ */
+
+:root {
+  /* ── Brand: Base blue ─────────────────────────────────── */
+  --brand: #0052ff;
+  --brand-hover: #0043d4;
+  --brand-active: #0038ad;
+  --brand-soft: #e8f0ff;
+  --brand-softer: #f3f7ff;
+  --brand-ink: #001f5c;
+  --accent: #24417f;
+
+  /* ── Surfaces: aged newsprint ─────────────────────────── */
+  --bg-page: #e7e2d6;
+  --bg-page-alt: #ded8c9;
+  --bg-card: #f4f0e6;
+  --bg-subtle: #efe9dc;
+  --bg-inset: #e1dbcb;
+  --bg-ink: #16130f;
+  --bg-overlay: rgba(22, 19, 15, 0.6);
+
+  /* ── Text: printer's ink ──────────────────────────────── */
+  --text-1: #16130f;
+  --text-2: #4c463b;
+  --text-3: #7c7566;
+  --text-inverse: #f4f0e6;
+  --text-brand: #0043d4;
+
+  /* ── Hairlines ────────────────────────────────────────── */
+  --border: #cbc4b3;
+  --border-soft: #d8d2c3;
+  --border-strong: #a9a190;
+  --border-ink: #16130f;
+  --border-focus: #0052ff;
+
+  /* ── Status: pressed ink stamps (with AA-safe -fg) ────── */
+  --success: #1f6b4a;
+  --success-fg: #124a33;
+  --success-soft: #e9efe6;
+  --success-border: #c2d2c3;
+  --warning: #9a6b10;
+  --warning-fg: #6d4a08;
+  --warning-soft: #f4edda;
+  --warning-border: #ddcda4;
+  --danger: #a32218;
+  --danger-fg: #78170f;
+  --danger-soft: #f4e4e1;
+  --danger-border: #e2c3be;
+  --info: #24417f;
+  --info-fg: #1a3060;
+  --info-soft: #e8ecf5;
+  --info-border: #c3cee6;
+
+  /* ── Radii: printed plates are sharp ──────────────────── */
+  --radius-card: 0px;
+  --radius-btn: 0px;
+  --radius-input: 0px;
+  --radius-pill: 0px;
+  --radius-sm: 0px;
+  --radius-alert: 0px;
+
+  /* ── Shadows: flat ink, one dry layer ─────────────────── */
+  --shadow-card: 0 1px 0 rgba(22, 19, 15, 0.05), 0 16px 30px -28px rgba(22, 19, 15, 0.65);
+  --shadow-card-hover: 0 1px 0 rgba(22, 19, 15, 0.07), 0 24px 40px -28px rgba(22, 19, 15, 0.7);
+  --shadow-pop: 0 22px 54px -28px rgba(22, 19, 15, 0.6);
+  --shadow-btn: 0 6px 14px -10px rgba(0, 82, 255, 0.85);
+
+  /* ── Type ─────────────────────────────────────────────── */
+  --font-display: "Playfair Display", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Times New Roman", serif;
+  --font-sans: "Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --font-mono: "Courier Prime", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-2xs: 10.5px;
+  --text-xs: 11.5px;
+  --text-sm: 13.5px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 22px;
+  --text-xl: 32px;
+  --text-2xl: 46px;
+  --text-3xl: 64px;
+
+  /* ── Spacing ──────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Motion ───────────────────────────────────────────── */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 110ms;
+  --dur-base: 200ms;
+  --dur-slow: 340ms;
+
+  /* ── Layout ───────────────────────────────────────────── */
+  --nav-height: 70px;
+  --content-max: 1160px;
+  --card-padding: 28px;
+  --gutter: 32px;
+
+  color-scheme: light;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Uppercase typewriter micro-label */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* Section index: 01 / 02 / 03 */
+.index {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--brand);
+}
