@@ -97,14 +97,6 @@ export function App() {
 
   return (
     <div style={{ minHeight: "100%", display: "flex", flexDirection: "column" }}>
-      {/* ── Registration marks ────────────────────────────── */}
-      <div className="crop-marks" aria-hidden>
-        <span className="crop crop--tl" />
-        <span className="crop crop--tr" />
-        <span className="crop crop--bl" />
-        <span className="crop crop--br" />
-      </div>
-
       {/* ── Masthead: newspaper nameplate ─────────────────── */}
       <header
         style={{
@@ -131,18 +123,18 @@ export function App() {
             <span
               aria-hidden
               className="brand-chip"
-              style={{
-                width: 26,
-                height: 26,
-                background: "var(--brand)",
-                color: "var(--text-inverse)",
-                fontSize: 14,
-                fontWeight: 900,
-                fontFamily: "var(--font-display)",
-                transform: "translateY(4px)",
-              }}
+              style={{ width: 26, height: 26, background: "var(--brand)" }}
             >
-              B
+              {/* The escrow mark: payer [ value ] payee. */}
+              <svg width="20" height="20" viewBox="0 0 64 64" fill="var(--on-brand)" focusable="false">
+                <rect x="8" y="10" width="8" height="44" />
+                <rect x="8" y="10" width="12" height="8" />
+                <rect x="8" y="46" width="12" height="8" />
+                <rect x="48" y="10" width="8" height="44" />
+                <rect x="44" y="10" width="12" height="8" />
+                <rect x="44" y="46" width="12" height="8" />
+                <rect x="24" y="24" width="16" height="16" />
+              </svg>
             </span>
             <span className="mast-word">Bond</span>
           </a>

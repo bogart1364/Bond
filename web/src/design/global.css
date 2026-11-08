@@ -131,54 +131,6 @@ textarea {
   color: var(--text-1);
 }
 
-/* Registration / crop marks framing the page */
-.crop-marks {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 400;
-}
-.crop {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  mix-blend-mode: difference;
-}
-.crop::before,
-.crop::after {
-  content: "";
-  position: absolute;
-  background: var(--crop-mark);
-}
-.crop::before {
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-}
-.crop::after {
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-}
-.crop--tl {
-  top: 9px;
-  left: 9px;
-}
-.crop--tr {
-  top: 9px;
-  right: 9px;
-}
-.crop--bl {
-  bottom: 9px;
-  left: 9px;
-}
-.crop--br {
-  bottom: 9px;
-  right: 9px;
-}
-
 /* ── Card: pasted clipping ──────────────────────────────── */
 .card {
   background: var(--bg-card);

@@ -145,9 +145,8 @@
   --danger-solid: #78170f;
   --info-solid: #1a3060;
 
-  /* ── Field paper + registration marks ─────────────────── */
+  /* ── Field paper ──────────────────────────────────────── */
   --bg-input: #faf7ef;
-  --crop-mark: #ffffff;
 
   color-scheme: light;
 }
