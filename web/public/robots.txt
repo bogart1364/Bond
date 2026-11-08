@@ -6,4 +6,4 @@ Allow: /
 Disallow: /?escrow=
 Disallow: /?view=
 
-Sitemap: https://web-psi-beige-58.vercel.app/sitemap.xml
+Sitemap: https://bond404.vercel.app/sitemap.xml
