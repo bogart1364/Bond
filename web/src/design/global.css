@@ -841,10 +841,13 @@ textarea.field__input {
   padding: 46px 0 40px;
 }
 
+/* Light on purpose: the display face has no real weights loaded, so a
+   heavy request renders as a synthetic bold — thick and muddy. Regular
+   keeps the column heads in the same ink as the links beneath them. */
 .footer-title {
   font-family: var(--font-display);
   font-style: italic;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 18px;
   color: var(--plate-title);
   padding-bottom: 12px;
@@ -867,7 +870,7 @@ textarea.field__input {
   gap: 6px;
   font-family: var(--font-sans);
   font-size: 14.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--plate-link);
   text-decoration: none;
 }
@@ -881,6 +884,68 @@ textarea.field__input {
 .footer-link svg {
   color: var(--plate-muted-icon);
   flex-shrink: 0;
+}
+
+/* ── Footer: the real brands this platform is built on ────
+   Official marks, never redrawn: Base's notched disc in Base blue,
+   USDC's coin in #2775ca, OpenZeppelin's bands in plate cream.
+   Each sits on a hairline tile (radius 0) so mixed shapes line up. */
+.footer-brands {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 20px 0;
+  border-top: 1px solid var(--plate-rule);
+}
+
+.footer-brands__label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--plate-muted);
+  margin-right: 4px;
+}
+
+.footer-brands__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.footer-brands__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--plate-rule-2);
+  padding: 8px 13px;
+  color: var(--plate-link);
+  text-decoration: none;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 400;
+}
+
+.footer-brands__item:hover {
+  border-color: var(--plate-rule-strong);
+  color: var(--plate-bright);
+}
+
+.footer-brands__item svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.footer-brands__meta {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--plate-muted);
 }
 
 @media (max-width: 1000px) {
