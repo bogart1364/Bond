@@ -506,9 +506,15 @@ export function LandingView({ chainId }: { chainId: number }) {
 
       {/* ── Final CTA ─────────────────────────────────────── */}
       <section className="ld-cta">
-        <span className="ld-cta__mark" aria-hidden>
-          B
-        </span>
+        <svg className="ld-cta__mark" aria-hidden viewBox="0 0 64 64" focusable="false" fill="rgba(244, 240, 230, 0.045)">
+          <rect x="8" y="10" width="8" height="44" />
+          <rect x="8" y="10" width="12" height="8" />
+          <rect x="8" y="46" width="12" height="8" />
+          <rect x="48" y="10" width="8" height="44" />
+          <rect x="44" y="10" width="12" height="8" />
+          <rect x="44" y="46" width="12" height="8" />
+          <rect x="24" y="24" width="16" height="16" />
+        </svg>
         <div className="ld-wrap" style={{ position: "relative" }}>
           <Reveal variant="rise">
             <span className="eyebrow" style={{ color: "var(--plate-muted)" }}>

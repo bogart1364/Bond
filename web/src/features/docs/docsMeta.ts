@@ -38,3 +38,18 @@ export const DOC_TITLES: Record<DocSlug, string> = {
   contact: "Contact",
   arbitration: "Dispute & arbitration",
 };
+
+/**
+ * One-line folio per document — printed in the strip footer under the
+ * title so every document page says what it is without the link farm.
+ * Condensed from each document's own deck; keep them truthful.
+ */
+export const DOC_FOLIO: Record<DocSlug, string> = {
+  docs: "Routes, contract, events and the error matrix",
+  about: "One contract, one bearer link, one arbiter — no server",
+  terms: "Plain English, because the contract is public",
+  privacy: "No account, no server, no analytics",
+  status: "Live figures — the contract answers for itself",
+  contact: "No support inbox — parties, an arbiter, a public record",
+  arbitration: "One arbiter per escrow, rules enforced by code",
+};

@@ -5,10 +5,11 @@ import { AlertBox } from "../components/ui/AlertBox";
 import { CardSkeleton } from "../components/ui/Feedback";
 import { LandingView } from "../features/landing/LandingView";
 import { DocsView } from "../features/docs/DocsView";
-import { isDocSlug, type DocSlug } from "../features/docs/docsMeta";
+import { isDocSlug, DOC_TITLES, DOC_FOLIO, type DocSlug } from "../features/docs/docsMeta";
 import { IconExternal, IconMenu } from "../components/ui/Icons";
 import { escrowAddressFor, ESCROW_ABI, parseEscrowLink, homeChainId } from "../lib/contracts";
 import { isSupportedChain, chainLabel, explorerAddressUrl } from "../lib/chains";
+import { shortAddress } from "../lib/format";
 import { useTheme } from "../lib/theme";
 import { PAUSED_BANNER } from "../lib/errors";
 
@@ -39,7 +40,7 @@ function RouteFallback() {
 
 export function App() {
   const connectedChainId = useChainId();
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
 
   // Disconnected users get the chain Bond actually lives on (homeChainId:
   // Base mainnet once it carries a deployment, else Base Sepolia) so the app
@@ -94,6 +95,26 @@ export function App() {
   }, [menuOpen]);
 
   const edition = EDITION;
+
+  // The landing prints the full colophon; every other page gets the strip
+  // footer carrying this page's own folio instead of the site-wide links.
+  const isLanding = escrowId === null && !showRecords && !showDoc && !showCreate;
+
+  const folio: PageFolio =
+    escrowId !== null
+      ? {
+          title: `Escrow #${escrowId}`,
+          detail: contract ? shortAddress(contract) : `No deployment on ${chainLabel(chainId)}`,
+          detailHref: contract ? explorerAddressUrl(chainId, contract) : undefined,
+        }
+      : showRecords
+        ? {
+            title: "My records",
+            detail: address ? `Inbox for ${shortAddress(address)}` : "Connect a wallet to load your records",
+          }
+        : showCreate
+          ? { title: "Create escrow", detail: "Draft — nothing locks until the payer signs" }
+          : { title: DOC_TITLES[docSlug], detail: DOC_FOLIO[docSlug] };
 
   return (
     <div style={{ minHeight: "100%", display: "flex", flexDirection: "column" }}>
@@ -274,7 +295,11 @@ export function App() {
         </Suspense>
       </main>
 
-      <SiteFooter chainId={chainId} contract={contract} />
+      {isLanding ? (
+        <SiteFooter chainId={chainId} contract={contract} />
+      ) : (
+        <PageStrip chainId={chainId} contract={contract} folio={folio} />
+      )}
     </div>
   );
 }
@@ -371,22 +396,27 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
             borderBottom: "1px solid var(--plate-rule)",
           }}
         >
-          <div className="row" style={{ gap: 14, alignItems: "baseline", flexWrap: "wrap" }}>
+          <div className="row" style={{ gap: 14, alignItems: "center", flexWrap: "wrap" }}>
             <span
               aria-hidden
               style={{
                 width: 30,
                 height: 30,
                 background: "var(--brand)",
-                color: "var(--plate-bright)",
                 display: "grid",
                 placeItems: "center",
-                fontSize: 16,
-                fontWeight: 900,
-                fontFamily: "var(--font-display)",
               }}
             >
-              B
+              {/* The escrow mark: payer [ value ] payee. */}
+              <svg width="22" height="22" viewBox="0 0 64 64" fill="var(--on-brand)" focusable="false">
+                <rect x="8" y="10" width="8" height="44" />
+                <rect x="8" y="10" width="12" height="8" />
+                <rect x="8" y="46" width="12" height="8" />
+                <rect x="48" y="10" width="8" height="44" />
+                <rect x="44" y="10" width="12" height="8" />
+                <rect x="44" y="46" width="12" height="8" />
+                <rect x="24" y="24" width="16" height="16" />
+              </svg>
             </span>
             <span
               style={{
@@ -550,6 +580,148 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
               Privacy
             </a>
           </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ── Strip footer: the page's own folio line ────────────── */
+
+interface PageFolio {
+  title: string;
+  detail: string;
+  /** When the folio names something on-chain, it links to it. */
+  detailHref?: string;
+}
+
+/**
+ * Everything except the landing keeps the footer's press skin — ink plate,
+ * double rule, mono caps — but prints this page's folio instead of the
+ * site-wide link farm: what the page is, where its record lives, and the
+ * same truthful deployment status the colophon claims.
+ */
+function PageStrip({ chainId, contract, folio }: { chainId: number; contract?: `0x${string}`; folio: PageFolio }) {
+  return (
+    <footer
+      id="colophon"
+      style={{
+        borderTop: "4px double var(--border-ink)",
+        background: "var(--bg-ink)",
+        color: "var(--plate-text)",
+        marginTop: "auto",
+      }}
+    >
+      <div
+        className="row"
+        style={{
+          maxWidth: "var(--content-max)",
+          margin: "0 auto",
+          padding: "16px var(--gutter)",
+          gap: "14px 24px",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+        }}
+      >
+        {/* Identity */}
+        <div className="row" style={{ gap: 10 }}>
+          <span
+            aria-hidden
+            style={{ width: 24, height: 24, background: "var(--brand)", display: "grid", placeItems: "center" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 64 64" fill="var(--on-brand)" focusable="false">
+              <rect x="8" y="10" width="8" height="44" />
+              <rect x="8" y="10" width="12" height="8" />
+              <rect x="8" y="46" width="12" height="8" />
+              <rect x="48" y="10" width="8" height="44" />
+              <rect x="44" y="10" width="12" height="8" />
+              <rect x="44" y="46" width="12" height="8" />
+              <rect x="24" y="24" width="16" height="16" />
+            </svg>
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 19,
+              fontWeight: 900,
+              letterSpacing: "-0.02em",
+              lineHeight: 1,
+              color: "var(--plate-title)",
+            }}
+          >
+            Bond
+          </span>
+        </div>
+
+        {/* This page's folio */}
+        <div className="row" style={{ gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+          <span
+            className="mono"
+            style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--plate-bright)" }}
+          >
+            {folio.title}
+          </span>
+          <span aria-hidden style={{ color: "var(--plate-rule-strong)" }}>
+            ·
+          </span>
+          {folio.detailHref ? (
+            <a
+              className="mono"
+              href={folio.detailHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 10.5,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "var(--plate-addr)",
+                display: "inline-flex",
+                gap: 6,
+                alignItems: "center",
+              }}
+            >
+              {folio.detail}
+              <IconExternal size={11} strokeWidth={3} />
+            </a>
+          ) : (
+            <span
+              className="mono"
+              style={{ fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--plate-muted)" }}
+            >
+              {folio.detail}
+            </span>
+          )}
+        </div>
+
+        {/* Colophon facts: truthful status + year */}
+        <div className="row" style={{ gap: 18, flexWrap: "wrap" }}>
+          <span
+            className="row gap-2"
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10.5,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "var(--plate-muted)",
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 6,
+                height: 6,
+                background: contract ? "var(--success)" : "var(--plate-muted)",
+                display: "inline-block",
+              }}
+            />
+            {contract ? `Live on ${chainLabel(chainId)}` : `No deployment on ${chainLabel(chainId)}`}
+          </span>
+          <span
+            className="mono"
+            style={{ fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--plate-muted)" }}
+          >
+            © {COPYRIGHT_YEAR}
+          </span>
         </div>
       </div>
     </footer>
