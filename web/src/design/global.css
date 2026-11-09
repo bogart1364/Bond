@@ -888,8 +888,10 @@ textarea.field__input {
 
 /* ── Footer: the real brands this platform is built on ────
    Official marks, never redrawn: Base's notched disc in Base blue,
-   USDC's coin in #2775ca, OpenZeppelin's bands in plate cream.
-   Each sits on a hairline tile (radius 0) so mixed shapes line up. */
+   USDC's coin in #2775ca, OpenZeppelin's bands in plate cream,
+   Foundry's roundel and Sourcify's disc from their own artwork,
+   GitHub and Vercel in the plate's ink. Each sits on a hairline
+   tile (radius 0) so mixed shapes line up. */
 .footer-brands {
   display: flex;
   align-items: center;
@@ -912,9 +914,15 @@ textarea.field__input {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
+  /* Take the sheet's remaining width (the label keeps its own), so the
+     grid below gets a definite track count instead of min-content. */
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Four even columns on the full sheet, then auto-fill down the page —
+     a ragged grid of uniform tiles reads as filed, not as a wrap. */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(236px, 1fr));
   gap: 10px;
-  flex-wrap: wrap;
 }
 
 .footer-brands__item {
