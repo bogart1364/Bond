@@ -1,5 +1,23 @@
-# Bond — non-custodial USDC escrow on Base
+<p align="center">
+  <img src="assets/bond-banner.svg" width="100%" />
+</p>
 
+<h1 align="center">BOND</h1>
+
+<p align="center">
+  NON-CUSTODIAL USDC ESCROW ON BASE
+</p>
+
+<p align="center">
+  PAY. DELIVER. SETTLE.
+</p>
+# Bond — non-custodial USDC escrow on Base
+<p align="center">
+  <img src="https://img.shields.io/badge/BASE-MAINNET-0052FF?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/USDC-SETTLEMENT-2775CA?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/SOLIDITY-0.8.31-black?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/LICENSE-MIT-green?style=for-the-badge"/>
+</p>
 Bond is a link-based escrow protocol: the payer locks USDC in an open-source,
 source-verified contract, the payee delivers, and the payer's confirmation
 releases the funds. Disputes go to a single arbiter. Silence returns the money
