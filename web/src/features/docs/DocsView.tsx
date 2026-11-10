@@ -64,9 +64,13 @@ const DOCS: Record<DocSlug, DocDef> = {
           "EscrowRefunded(id)",
           "DisputeOpened(id, by)",
           "DisputeResolved(id, payeeAmount, payerAmount, fee)",
+          "MilestoneAdded(id, index, amount, due, title)",
+          "MilestoneSettled(id, index, payeeAmount, fee)",
+          "EvidenceSubmitted(id, by, evidenceHash, note)",
         ],
         p: [
           "My Records and the timeline are built on these logs alone: one eth_getLogs call per page-load, bounded by the deploy block and auto-split when the RPC caps the range. There is no indexer and no server.",
+          "Milestone escrows add slice-level events: each slice reports its own release (MilestoneSettled), while EscrowConfirmed always carries the cumulative totals for the whole escrow. Evidence anchors by hash only — keccak256 of the artifact, never the artifact itself.",
         ],
       },
       {
@@ -105,6 +109,7 @@ const DOCS: Record<DocSlug, DocDef> = {
         h: "What it does",
         p: [
           "Bond locks USDC inside open-source, source-verified code until the payer confirms delivery — or an arbiter rules on a dispute, or the deadline plus a 48-hour grace period returns the money. The payer shares a link; whoever holds the link can open the escrow record, but nobody — including the people running this website — can move the funds except through the contract's own rules.",
+          "An escrow can be one payment or up to 12 milestones: the payer releases each slice as it lands (or confirms once to release everything remaining), while the escrow deadline still governs the timeout for whatever is still open. Parties can anchor evidence — a keccak256 hash plus a note, never the file itself — and the payer can sign a release off-chain so anybody, usually the payee, can file it and pay the gas.",
         ],
       },
       {

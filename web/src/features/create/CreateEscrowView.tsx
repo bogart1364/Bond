@@ -28,6 +28,28 @@ interface FormValues {
 
 const EMPTY: FormValues = { payee: "", amount: "", deadlineDays: "7", description: "", arbiter: "" };
 
+/** One draft milestone row in the create form. */
+interface MilestoneRow {
+  title: string;
+  amount: string;
+  /** Days from now; empty = no target. Must never exceed the deadline. */
+  dueDays: string;
+}
+
+const EMPTY_ROW: MilestoneRow = { title: "", amount: "", dueDays: "" };
+
+/** Mirrors the contract's MAX_MILESTONES — bounds the settlement loop. */
+const MAX_MILESTONES = 12;
+const MAX_TITLE_BYTES = 96;
+
+type Structure = "single" | "milestones";
+
+/** Layer 1 errors, plus one inline message per milestone row. */
+type FormErrors = Partial<Record<keyof FormValues, string>> & {
+  form?: string;
+  rows?: string[];
+};
+
 /** Preset amounts in USDC — sized for typical freelance settlements. */
 const AMOUNT_PRESETS = ["50", "100", "500", "2500"] as const;
 
@@ -35,8 +57,13 @@ const AMOUNT_PRESETS = ["50", "100", "500", "2500"] as const;
 const DAY_PRESETS = [3, 7, 14, 30] as const;
 
 /** Layer 1 — validation runs before any RPC or wallet call. */
-function validate(v: FormValues, connected: boolean): Partial<Record<keyof FormValues, string>> & { form?: string } {
-  const e: Partial<Record<keyof FormValues, string>> & { form?: string } = {};
+function validate(
+  v: FormValues,
+  connected: boolean,
+  structure: Structure,
+  rows: MilestoneRow[],
+): FormErrors {
+  const e: FormErrors = {};
 
   if (!connected) e.form = "Connect your wallet to create an escrow link.";
 
@@ -44,13 +71,17 @@ function validate(v: FormValues, connected: boolean): Partial<Record<keyof FormV
   else if (!isAddress(v.payee.trim())) e.payee = "That is not a valid 0x address.";
   else if (v.payee.trim().toLowerCase() === zeroAddress) e.payee = "The zero address cannot receive funds.";
 
-  if (!v.amount.trim()) e.amount = "Enter an amount.";
-  else {
-    try {
-      const wei = parseUnits(v.amount, USDC_DECIMALS);
-      if (wei <= 0n) e.amount = "Amount must be greater than zero.";
-    } catch {
-      e.amount = "Enter a valid number, up to 6 decimals.";
+  // In milestone mode the escrow amount is the SUM of the rows, so the
+  // single-amount field is not rendered and must not gate the form.
+  if (structure === "single") {
+    if (!v.amount.trim()) e.amount = "Enter an amount.";
+    else {
+      try {
+        const wei = parseUnits(v.amount, USDC_DECIMALS);
+        if (wei <= 0n) e.amount = "Amount must be greater than zero.";
+      } catch {
+        e.amount = "Enter a valid number, up to 6 decimals.";
+      }
     }
   }
 
@@ -58,6 +89,35 @@ function validate(v: FormValues, connected: boolean): Partial<Record<keyof FormV
   if (!Number.isFinite(days) || days <= 0) e.deadlineDays = "Enter a number of days.";
   else if (days * 24 * 60 < 10) e.deadlineDays = "Minimum duration is 10 minutes.";
   else if (days > 365) e.deadlineDays = "Maximum duration is 365 days.";
+
+  if (structure === "milestones") {
+    const rowErrs: string[] = [];
+    let any = false;
+    const encoder = new TextEncoder();
+    rows.forEach((r) => {
+      let msg = "";
+      if (!r.amount.trim()) msg = "Enter an amount.";
+      else {
+        try {
+          const wei = parseUnits(r.amount, USDC_DECIMALS);
+          if (wei <= 0n) msg = "Amount must be greater than zero.";
+        } catch {
+          msg = "Enter a valid number, up to 6 decimals.";
+        }
+      }
+      if (!msg && encoder.encode(r.title).length > MAX_TITLE_BYTES) {
+        msg = `Keep the title under ${MAX_TITLE_BYTES} bytes.`;
+      }
+      if (!msg && r.dueDays.trim()) {
+        const d = Number(r.dueDays);
+        if (!Number.isFinite(d) || d < 0) msg = "Due must be days from now.";
+        else if (Number.isFinite(days) && d > days) msg = "Due cannot be past the deadline.";
+      }
+      rowErrs.push(msg);
+      if (msg) any = true;
+    });
+    if (any) e.rows = rowErrs;
+  }
 
   if (v.description.length > 256) e.description = "Keep the description under 256 characters.";
 
@@ -84,8 +144,13 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
   const [createdId, setCreatedId] = useState<bigint | null>(null);
   /** True once the user has pressed Create with an invalid form (E01). */
   const [formAttempted, setFormAttempted] = useState(false);
+  /** Single amount vs milestone slices — the two creation entrypoints. */
+  const [structure, setStructure] = useState<Structure>("single");
+  const [rows, setRows] = useState<MilestoneRow[]>([{ ...EMPTY_ROW }]);
+  /** Row fields validate on submit rather than per keystroke. */
+  const [rowsTouched, setRowsTouched] = useState(false);
 
-  const errors = useMemo(() => validate(values, isConnected), [values, isConnected]);
+  const errors = useMemo(() => validate(values, isConnected, structure, rows), [values, isConnected, structure, rows]);
   const hasErrors = Object.keys(errors).length > 0;
 
   // Live USDC balance so E04 can show the shortfall before simulation.
@@ -100,13 +165,17 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
     query: { enabled: !!address && !!USDC_ADDRESS[chainId] },
   });
 
+  // The escrow locks the single amount, or the SUM of the milestone rows.
   const required = useMemo(() => {
     try {
+      if (structure === "milestones") {
+        return rows.reduce((acc, r) => (r.amount.trim() ? acc + parseUnits(r.amount, USDC_DECIMALS) : acc), 0n);
+      }
       return values.amount ? parseUnits(values.amount, USDC_DECIMALS) : 0n;
     } catch {
       return 0n;
     }
-  }, [values.amount]);
+  }, [values.amount, structure, rows]);
 
   const shortfall = balance !== undefined && required > (balance as bigint) ? required - (balance as bigint) : 0n;
 
@@ -117,6 +186,7 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
 
   async function submit() {
     setTouched({ payee: true, amount: true, deadlineDays: true, arbiter: true, description: true });
+    setRowsTouched(true);
     if (hasErrors || !contract || !publicClient || !walletClient || !address) {
       // Surface the matrix code instead of failing silently: the inline
       // field messages alone left the button looking broken.
@@ -130,15 +200,39 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
 
     const payee = values.payee.trim() as `0x${string}`;
     const arbiter = values.arbiter.trim() as `0x${string}`;
-    const amount = parseUnits(values.amount, USDC_DECIMALS);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + Math.round(Number(values.deadlineDays) * 86400));
+
+    // One entrypoint per structure — the milestone call sums the rows on
+    // chain, so the client never sends an amount that could drift from it.
+    const call =
+      structure === "milestones"
+        ? {
+            functionName: "createEscrowMilestones",
+            args: [
+              payee,
+              rows.map((r) => parseUnits(r.amount, USDC_DECIMALS)),
+              rows.map((r) =>
+                r.dueDays.trim()
+                  ? BigInt(Math.floor(Date.now() / 1000) + Math.round(Number(r.dueDays) * 86400))
+                  : 0n,
+              ),
+              rows.map((r) => r.title),
+              deadline,
+              values.description,
+              arbiter,
+            ] as const,
+          }
+        : {
+            functionName: "createEscrow",
+            args: [payee, parseUnits(values.amount, USDC_DECIMALS), deadline, values.description, arbiter] as const,
+          };
 
     const result = await runTx(
       {
         abi: ESCROW_ABI,
         address: contract,
-        functionName: "createEscrow",
-        args: [payee, amount, deadline, values.description, arbiter],
+        functionName: call.functionName,
+        args: call.args as unknown as unknown[],
       },
       {
         publicClient,
@@ -219,6 +313,9 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
               setTx(IDLE_TX);
               setValues(EMPTY);
               setTouched({});
+              setStructure("single");
+              setRows([{ ...EMPTY_ROW }]);
+              setRowsTouched(false);
             },
           }}
         />
@@ -233,12 +330,16 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
           setTx(IDLE_TX);
           setValues(EMPTY);
           setTouched({});
+          setStructure("single");
+          setRows([{ ...EMPTY_ROW }]);
+          setRowsTouched(false);
         }}
       />
     );
   }
 
   const show = (k: keyof FormValues) => touched[k] && errors[k];
+  const rowError = (i: number) => (rowsTouched || formAttempted ? errors.rows?.[i] : undefined);
 
   return (
     <div className="stack gap-8">
@@ -369,7 +470,40 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
             {show("payee") && <span className="field__error">{errors.payee}</span>}
           </div>
 
+          {/* ── Structure: one payment vs milestone slices ──── */}
+          <div className="stack gap-2">
+            <span className="field__label">Structure</span>
+            <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+              {(
+                [
+                  { key: "single" as Structure, label: "Single payment", hint: "One release on confirmation" },
+                  { key: "milestones" as Structure, label: "Milestones", hint: "Release slice by slice" },
+                ]
+              ).map((o) => {
+                const on = structure === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    className={`mono ${on ? "preset preset--on" : "preset"}`}
+                    aria-pressed={on}
+                    onClick={() => setStructure(o.key)}
+                    style={{ fontSize: 11, letterSpacing: "0.06em", padding: "8px 12px" }}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="field__hint">
+              {structure === "single"
+                ? "The payer confirms once and the full amount releases."
+                : `Up to ${MAX_MILESTONES} slices — the payer releases each milestone as it lands, or all at once.`}
+            </span>
+          </div>
+
           <div className="row gap-4" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+            {structure === "single" ? (
             <div className="field" style={{ flex: "1 1 180px" }}>
               <label className="field__label" htmlFor="amount">
                 Amount (USDC)
@@ -392,7 +526,22 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
                 </span>
               ) : null}
             </div>
-
+            ) : (
+            <div className="field" style={{ flex: "1 1 180px" }}>
+              <label className="field__label" htmlFor="total">
+                Escrow amount (auto)
+              </label>
+              <div
+                id="total"
+                className="field__input tnum"
+                style={{ background: "var(--bg-ink)", color: "var(--text-2)", cursor: "default" }}
+                aria-readonly="true"
+              >
+                {formatUsdc(required)} USDC
+              </div>
+              <span className="field__hint">Sum of the milestone amounts below.</span>
+            </div>
+            )}
             <div className="field" style={{ flex: "1 1 150px" }}>
               <label className="field__label" htmlFor="days">
                 Deadline (days)
@@ -416,15 +565,17 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
 
           {/* ── Presets: one click fills a field, typing still wins ── */}
           <div className="stack gap-2">
-            <PresetRow
-              label="Common amounts"
-              options={AMOUNT_PRESETS.map((a) => ({ value: a, label: `${a} USDC` }))}
-              active={values.amount}
-              onPick={(v) => {
-                setValues((p) => ({ ...p, amount: v }));
-                setTouched((p) => ({ ...p, amount: true }));
-              }}
-            />
+            {structure === "single" && (
+              <PresetRow
+                label="Common amounts"
+                options={AMOUNT_PRESETS.map((a) => ({ value: a, label: `${a} USDC` }))}
+                active={values.amount}
+                onPick={(v) => {
+                  setValues((p) => ({ ...p, amount: v }));
+                  setTouched((p) => ({ ...p, amount: true }));
+                }}
+              />
+            )}
             <PresetRow
               label="Standard deadlines"
               options={DAY_PRESETS.map((d) => ({ value: String(d), label: `${d} days` }))}
@@ -436,6 +587,130 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
             />
           </div>
 
+          {/* ── Milestone rows: the slice table, validated on submit ── */}
+          {structure === "milestones" && (
+            <div className="stack gap-3" style={{ borderTop: "1px solid var(--border)", paddingTop: 18 }}>
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                <span className="eyebrow">Milestones</span>
+                <span className="mono tnum" style={{ fontSize: 11, color: "var(--text-3)" }}>
+                  {rows.length}/{MAX_MILESTONES} · {formatUsdc(required)} USDC
+                </span>
+              </div>
+
+              {rows.map((r, i) => (
+                <div
+                  key={i}
+                  className="stack gap-2"
+                  style={{ border: "1px solid var(--border)", padding: 12, background: "var(--bg-card)" }}
+                >
+                  <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                    <span
+                      className="mono"
+                      style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--brand)", fontWeight: 700 }}
+                    >
+                      Slice {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <button
+                      type="button"
+                      className="mono"
+                      style={{
+                        fontSize: 10,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: rows.length > 1 ? "var(--status-red)" : "var(--text-3)",
+                        background: "none",
+                        border: "none",
+                        cursor: rows.length > 1 ? "pointer" : "not-allowed",
+                        padding: 0,
+                      }}
+                      disabled={rows.length <= 1}
+                      onClick={() => {
+                        setRowsTouched(true);
+                        setRows((p) => p.filter((_, j) => j !== i));
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div className="row gap-3" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <div className="field" style={{ flex: "2 1 170px" }}>
+                      <label className="field__label" htmlFor={`ms-title-${i}`}>
+                        Title
+                      </label>
+                      <input
+                        id={`ms-title-${i}`}
+                        className="field__input"
+                        placeholder="e.g. Wireframes"
+                        maxLength={96}
+                        value={r.title}
+                        onChange={(ev) =>
+                          setRows((p) => p.map((row, j) => (j === i ? { ...row, title: ev.target.value } : row)))
+                        }
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="field" style={{ flex: "1 1 110px" }}>
+                      <label className="field__label" htmlFor={`ms-amount-${i}`}>
+                        Amount
+                      </label>
+                      <input
+                        id={`ms-amount-${i}`}
+                        inputMode="decimal"
+                        className={`field__input tnum ${rowError(i) ? "field__input--invalid" : ""}`}
+                        placeholder="100.00"
+                        value={r.amount}
+                        onChange={(ev) => {
+                          setRowsTouched(true);
+                          setRows((p) => p.map((row, j) => (j === i ? { ...row, amount: ev.target.value } : row)));
+                        }}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="field" style={{ flex: "1 1 90px" }}>
+                      <label className="field__label" htmlFor={`ms-due-${i}`}>
+                        Due (days)
+                      </label>
+                      <input
+                        id={`ms-due-${i}`}
+                        inputMode="numeric"
+                        className="field__input tnum"
+                        placeholder="optional"
+                        value={r.dueDays}
+                        onChange={(ev) =>
+                          setRows((p) => p.map((row, j) => (j === i ? { ...row, dueDays: ev.target.value } : row)))
+                        }
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  {rowError(i) && <span className="field__error">{rowError(i)}</span>}
+                </div>
+              ))}
+
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <button
+                  type="button"
+                  className="mono preset"
+                  disabled={rows.length >= MAX_MILESTONES}
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: "0.06em",
+                    padding: "8px 12px",
+                    cursor: rows.length >= MAX_MILESTONES ? "not-allowed" : "pointer",
+                    opacity: rows.length >= MAX_MILESTONES ? 0.5 : 1,
+                  }}
+                  onClick={() => {
+                    setRowsTouched(true);
+                    setRows((p) => (p.length >= MAX_MILESTONES ? p : [...p, { ...EMPTY_ROW }]));
+                  }}
+                >
+                  Add milestone
+                </button>
+                <span className="field__hint">Due dates are targets — the escrow deadline still governs the timeout.</span>
+              </div>
+            </div>
+          )}
           {/* E04: shortfall shown with the exact missing amount */}
           {shortfall > 0n && (
             <AlertBox

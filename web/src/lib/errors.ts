@@ -37,8 +37,8 @@ export interface UserError {
  * that had drifted from the deployed ABI — every entry was wrong — which
  * silently downgraded all real reverts to the generic branch.)
  *
- * Covers every `error` in the deployed ABI: the 20 declared in EscrowLink.sol
- * plus the OZ ones reachable through its dependencies.
+ * Covers every `error` in the deployed ABI: all of EscrowLink.sol's custom
+ * errors (v1/v2/v3) plus the OZ ones reachable through its dependencies.
  */
 const CONTRACT_ERRORS: Record<string, (args: readonly unknown[]) => Partial<UserError>> = {
   // ── EscrowLink.sol ──────────────────────────────────────
@@ -96,6 +96,62 @@ const CONTRACT_ERRORS: Record<string, (args: readonly unknown[]) => Partial<User
   }),
   RenounceDisabled: () => ({ title: "Ownership cannot be renounced", description: "Use the two-step transfer to hand ownership to a multisig." }),
 
+  // ── v3: milestones ──────────────────────────────────────
+  MilestonesMismatch: () => ({
+    title: "Milestone fields do not line up",
+    description: "Amounts, due dates and titles must be entered for every milestone — one of the three lists is shorter.",
+  }),
+  NoMilestones: () => ({ title: "Add at least one milestone", description: "A milestone escrow needs between 1 and 12 slices." }),
+  // TooManyMilestones(uint256 count)
+  TooManyMilestones: (a) => ({
+    title: "Too many milestones",
+    description: `You entered ${String(a[0])} milestones; the maximum per escrow is 12. Merge some steps and try again.`,
+  }),
+  // MilestoneAmountZero(uint256 index)
+  MilestoneAmountZero: (a) => ({
+    title: "A milestone amount is zero",
+    description: `Milestone ${Number(a[0]) + 1} has no amount. Every slice must be greater than zero.`,
+  }),
+  // MilestoneNotFound(uint256 id, uint256 index)
+  MilestoneNotFound: (a) => ({
+    title: "That milestone does not exist",
+    description: `Escrow #${String(a[0])} has no milestone ${Number(a[1]) + 1}. The link or the index may be stale.`,
+    actionLabel: "Reload escrow",
+  }),
+  // MilestoneAlreadySettled(uint256 id, uint256 index)
+  MilestoneAlreadySettled: (a) => ({
+    title: "Milestone already released",
+    description: `Milestone ${Number(a[1]) + 1} of escrow #${String(a[0])} was already paid out — nothing to release again.`,
+    actionLabel: "Reload escrow",
+  }),
+  // MilestoneDueAfterDeadline(uint256 index)
+  MilestoneDueAfterDeadline: (a) => ({
+    title: "A milestone is due after the deadline",
+    description: `Milestone ${Number(a[0]) + 1} targets a date past the escrow deadline. Move it earlier or extend the deadline.`,
+  }),
+  // MilestoneTitleTooLong(uint256 index)
+  MilestoneTitleTooLong: (a) => ({
+    title: "A milestone title is too long",
+    description: `Milestone ${Number(a[0]) + 1} has a title over 96 bytes. Shorten it so the record stays readable.`,
+  }),
+
+  // ── v3: evidence ────────────────────────────────────────
+  NotEscrowParty: () => ({
+    title: "Only a party may file evidence",
+    description: "Evidence can be anchored by the payer, the payee or the arbiter of this escrow.",
+  }),
+  EmptyEvidenceHash: () => ({
+    title: "Evidence hash is empty",
+    description: "Hash the file first (keccak256) and submit the digest — a zero hash would anchor nothing.",
+  }),
+
+  // ── v3: gasless release ─────────────────────────────────
+  InvalidReleaseSignature: () => ({
+    title: "The release signature did not match",
+    description:
+      "The payer's signature does not cover this exact release on this network — it may be for another milestone, already used, or signed by a different address. Ask the payer to re-sign; no funds moved.",
+  }),
+
   // ── OpenZeppelin (reachable through the contract) ───────
   EnforcedPause: () => ({ ...CONTRACT_PAUSED, details: "EnforcedPause()" }),
   ExpectedPause: () => ({ title: "The contract is not paused", description: "This guard only fires while the contract is paused." }),
@@ -135,6 +191,17 @@ const SELECTOR_INDEX: Record<string, string> = {
   "0x0fd4680a": "InvalidHandshakeSignature",
   "0x05b9bb8f": "UnexpectedTransfer",
   "0x89051165": "RenounceDisabled",
+  "0xbd9910b4": "MilestonesMismatch",
+  "0x5c4a81cc": "NoMilestones",
+  "0x7e5bd33d": "TooManyMilestones",
+  "0xabed7544": "MilestoneAmountZero",
+  "0x0fcd92b0": "MilestoneNotFound",
+  "0x01530ab6": "MilestoneAlreadySettled",
+  "0x9bbcb5c7": "MilestoneDueAfterDeadline",
+  "0x584ea0a5": "MilestoneTitleTooLong",
+  "0xd5abedff": "NotEscrowParty",
+  "0x5d15a983": "EmptyEvidenceHash",
+  "0xcda44837": "InvalidReleaseSignature",
   "0xd93c0665": "EnforcedPause",
   "0x8dfc202b": "ExpectedPause",
   "0x118cdaa7": "OwnableUnauthorizedAccount",

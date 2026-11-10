@@ -77,6 +77,19 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
         string description;
     }
 
+    /// @dev A slice of an escrow's principal. Milestones live in a parallel
+    ///      mapping rather than inside {Escrow}, so the escrow struct keeps
+    ///      the exact deployed v2 ABI — one frontend, both generations.
+    ///      `due` is a target for the payer's confirmation, not a chain
+    ///      deadline: the escrow-level deadline and its 48-hour grace remain
+    ///      the only timeout, exactly as in v2.
+    struct Milestone {
+        uint256 amount; // principal slice; the sum over all == escrow amount
+        uint64 due; // delivery target (unix seconds, 0 = none)
+        bool settled; // true once released to the payee
+        string title; // short label shown in the milestone table
+    }
+
     // ---------------------------------------------------------------
     // Constants
     // ---------------------------------------------------------------
@@ -93,11 +106,22 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
     uint16 public constant MAX_FEE_BPS = 1_000; // hard cap: 10%
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant MAX_DESCRIPTION_BYTES = 256;
+    /// @notice Upper bound on milestones per escrow — bounds the settlement
+    ///         loop's gas and keeps a single confirmation transaction cheap.
+    uint256 public constant MAX_MILESTONES = 12;
+    uint256 public constant MAX_MILESTONE_TITLE_BYTES = 96;
 
     /// @dev EIP-712 type of the off-chain consent signed by payee + arbiter.
     bytes32 private constant _HANDSHAKE_TYPEHASH = keccak256(
         "Handshake(address payer,address payee,address arbiter,uint256 amount,uint256 deadline,uint256 nonce,bytes32 descriptionHash)"
     );
+
+    /// @dev EIP-712 types of the gasless release: the payer signs off-chain,
+    ///      anybody may submit the signature and pay the gas — typically the
+    ///      payee, who is the one waiting on the money. `Release` names one
+    ///      milestone; `ReleaseAll` sweeps every unsettled slice.
+    bytes32 private constant _RELEASE_TYPEHASH = keccak256("Release(uint256 id,uint256 index,uint256 nonce)");
+    bytes32 private constant _RELEASE_ALL_TYPEHASH = keccak256("ReleaseAll(uint256 id,uint256 nonce)");
 
     // The domain and the digest are written out here instead of inheriting
     // OpenZeppelin's EIP712 module: in v5.7 that module targets the Osaka EVM
@@ -137,6 +161,19 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
     uint256 private _nextId = 1;
     mapping(uint256 id => Escrow) private _escrows;
 
+    /// @notice Milestone slices per escrow. Empty for a plain escrow, so a
+    ///         v2-era escrow reads back with zero milestones and every
+    ///         existing path behaves exactly as before.
+    mapping(uint256 id => Milestone[] milestones) private _milestones;
+
+    /// @notice Per-escrow, per-slot nonce for the gasless release signatures.
+    ///         `Release` signs slot `index`, `ReleaseAll` signs slot
+    ///         `type(uint256).max`. The digest binds the current value and
+    ///         the value moves on use, so one signature files one release
+    ///         and never replays — while different milestones stay
+    ///         independently pre-signable.
+    mapping(uint256 id => mapping(uint256 slot => uint256 nonce)) public releaseNonces;
+
     // ---------------------------------------------------------------
     // Events
     // ---------------------------------------------------------------
@@ -158,6 +195,9 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
     event DisputeOpened(uint256 indexed id, address indexed by);
     event DisputeResolved(uint256 indexed id, uint256 payeeAmount, uint256 payerAmount, uint256 fee);
     event EscrowRefunded(uint256 indexed id, bool byTimeout);
+    event MilestoneSettled(uint256 indexed id, uint256 indexed index, uint256 payeeAmount, uint256 fee);
+    event MilestoneAdded(uint256 indexed id, uint256 indexed index, uint256 amount, uint64 due, string title);
+    event EvidenceSubmitted(uint256 indexed id, address indexed by, bytes32 indexed evidenceHash, string note);
     event PaymentCredited(address indexed account, uint256 amount);
     event PaymentWithdrawn(address indexed account, address indexed to, uint256 amount);
     event FeeUpdated(uint16 oldFeeBps, uint16 newFeeBps);
@@ -187,8 +227,21 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
     /// @param availableAt Unix time when the arbiter window closes.
     error ArbiterWindowOpen(uint256 availableAt);
     error InvalidHandshakeSignature();
+    error InvalidReleaseSignature();
     error UnexpectedTransfer(uint256 received, uint256 expected);
     error RenounceDisabled();
+    // Milestones
+    error MilestonesMismatch();
+    error TooManyMilestones(uint256 count);
+    error NoMilestones();
+    error MilestoneAmountZero(uint256 index);
+    error MilestoneNotFound(uint256 id, uint256 index);
+    error MilestoneAlreadySettled(uint256 id, uint256 index);
+    error MilestoneDueAfterDeadline(uint256 index);
+    error MilestoneTitleTooLong(uint256 index);
+    // Evidence
+    error NotEscrowParty();
+    error EmptyEvidenceHash();
 
     // ---------------------------------------------------------------
     // Constructor
@@ -267,6 +320,74 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
     }
 
     /**
+     * @notice Create an escrow split into milestones. The escrow amount is
+     *         the SUM of the milestone amounts; funding locks the whole sum,
+     *         and the payer releases slice by slice ({confirmMilestone}) or
+     *         all at once ({confirm}).
+     *
+     * Milestone `due` dates are targets for the payer's confirmation, not
+     * chain-enforced deadlines — the escrow-level deadline and its 48-hour
+     * grace remain the only timeout, so a missed milestone can never strand
+     * funds that the plain timeout rule would have freed.
+     *
+     * @param amounts_ One positive amount per milestone; sum becomes the
+     *                 escrow amount. Length 1..MAX_MILESTONES.
+     * @param dues_    Parallel delivery targets (unix seconds, 0 = none).
+     *                 Each must be <= the escrow deadline.
+     * @param titles_  Parallel short labels, <= MAX_MILESTONE_TITLE_BYTES.
+     * @return id Handle used in the shareable link.
+     */
+    function createEscrowMilestones(
+        address payee_,
+        uint256[] calldata amounts_,
+        uint64[] calldata dues_,
+        string[] calldata titles_,
+        uint256 deadline_,
+        string calldata description_,
+        address arbiter_
+    ) external whenNotPaused returns (uint256 id) {
+        uint256 total = _checkMilestones(amounts_, dues_, titles_, deadline_);
+        _validate(payee_, total, deadline_, description_, arbiter_);
+
+        id = _store(payee_, total, deadline_, description_, arbiter_, false);
+        _storeMilestones(id, amounts_, dues_, titles_);
+    }
+
+    /// @dev Shape + per-slice validation; returns the escrow amount (sum).
+    function _checkMilestones(
+        uint256[] calldata amounts_,
+        uint64[] calldata dues_,
+        string[] calldata titles_,
+        uint256 deadline_
+    ) private pure returns (uint256 total) {
+        uint256 count = amounts_.length;
+        if (count != dues_.length || count != titles_.length) revert MilestonesMismatch();
+        if (count == 0) revert NoMilestones();
+        if (count > MAX_MILESTONES) revert TooManyMilestones(count);
+
+        for (uint256 i = 0; i < count; ++i) {
+            if (amounts_[i] == 0) revert MilestoneAmountZero(i);
+            if (dues_[i] > deadline_) revert MilestoneDueAfterDeadline(i);
+            if (bytes(titles_[i]).length > MAX_MILESTONE_TITLE_BYTES) revert MilestoneTitleTooLong(i);
+            total += amounts_[i];
+        }
+    }
+
+    function _storeMilestones(
+        uint256 id,
+        uint256[] calldata amounts_,
+        uint64[] calldata dues_,
+        string[] calldata titles_
+    ) private {
+        Milestone[] storage ms = _milestones[id];
+        uint256 count = amounts_.length;
+        for (uint256 i = 0; i < count; ++i) {
+            ms.push(Milestone({amount: amounts_[i], due: dues_[i], settled: false, title: titles_[i]}));
+            emit MilestoneAdded(id, i, amounts_[i], dues_[i], titles_[i]);
+        }
+    }
+
+    /**
      * @notice Lock `amount` into the escrow. Requires a prior ERC-20 approval.
      */
     function fund(uint256 id) external nonReentrant whenNotPaused {
@@ -302,22 +423,63 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
 
     /**
      * @notice Payer confirms delivery — releases principal to payee minus fee.
+     *         On a milestone escrow this settles EVERY remaining slice at
+     *         once; slice-by-slice release goes through {confirmMilestone}.
      */
     function confirm(uint256 id) external nonReentrant {
         Escrow storage e = _get(id);
         if (e.state != State.Funded) revert InvalidState(State.Funded, e.state);
         if (msg.sender != e.payer) revert NotPayer();
 
-        e.state = State.Completed;
+        _confirmAll(id, e);
+    }
 
-        (uint256 payeeAmount, uint256 fee) = _split(e.amount, e.feeBps);
+    /**
+     * @notice Gasless {confirm}: the payer signs the EIP-712 `ReleaseAll`
+     *         digest off-chain and ANYBODY may submit it, paying the gas —
+     *         typically the payee who is waiting on the money. The signature
+     *         binds this escrow, this chain, this contract and the escrow's
+     *         `ReleaseAll` nonce; the nonce moves on use, so one signature
+     *         files exactly one release and never replays.
+     */
+    function confirmWithSig(uint256 id, bytes calldata sig) external nonReentrant {
+        Escrow storage e = _get(id);
+        if (e.state != State.Funded) revert InvalidState(State.Funded, e.state);
+        if (!_isValidSignature(e.payer, releaseAllDigest(id), sig)) revert InvalidReleaseSignature();
 
-        _deliver(e.payee, payeeAmount);
-        if (fee > 0) {
-            accruedFees += fee;
-        }
+        releaseNonces[id][type(uint256).max] += 1;
+        _confirmAll(id, e);
+    }
 
-        emit EscrowConfirmed(id, payeeAmount, fee);
+    /**
+     * @notice Payer confirms delivery of ONE milestone — releases that slice
+     *         to the payee minus fee. When the last unsettled slice settles,
+     *         the escrow completes and {EscrowConfirmed} reports the
+     *         cumulative totals for the whole escrow.
+     * @dev Plain escrows hold no slices: use {confirm}.
+     */
+    function confirmMilestone(uint256 id, uint256 index) external nonReentrant {
+        Escrow storage e = _get(id);
+        if (e.state != State.Funded) revert InvalidState(State.Funded, e.state);
+        if (msg.sender != e.payer) revert NotPayer();
+
+        _settleMilestone(id, e, index);
+    }
+
+    /**
+     * @notice Gasless {confirmMilestone} — same signature rules as
+     *         {confirmWithSig}, with `index` bound into the digest so a
+     *         signature for slice 0 can never settle slice 1, and its own
+     *         nonce slot so releases of different milestones can be signed
+     *         independently ahead of time.
+     */
+    function confirmMilestoneWithSig(uint256 id, uint256 index, bytes calldata sig) external nonReentrant {
+        Escrow storage e = _get(id);
+        if (e.state != State.Funded) revert InvalidState(State.Funded, e.state);
+        if (!_isValidSignature(e.payer, releaseDigest(id, index), sig)) revert InvalidReleaseSignature();
+
+        releaseNonces[id][index] += 1;
+        _settleMilestone(id, e, index);
     }
 
     /**
@@ -340,6 +502,14 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
      * @notice Arbiter splits the principal. `payeeBps` of the amount goes to
      *         the payee; the remainder returns to the payer. Fee applies only
      *         to the payee's share.
+     *
+     * On a milestone escrow the ruling applies to the UNSETTLED remainder
+     * only — slices the payer already confirmed are final and stay with the
+     * payee. A plain escrow holds no settled slices, so the remainder IS the
+     * amount and the behavior is identical to v2. The event reports
+     * CUMULATIVE totals, so `payeeAmount + payerAmount + fee == amount`
+     * holds for every escrow, milestone or not.
+     *
      * @param payeeBps Share for the payee, 0–10000. 10000 = payee takes all.
      */
     function resolveDispute(uint256 id, uint16 payeeBps) external nonReentrant {
@@ -350,8 +520,11 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
 
         e.state = payeeBps == 0 ? State.Refunded : State.Completed;
 
-        uint256 payeeGross = (e.amount * payeeBps) / BPS_DENOMINATOR;
-        uint256 payerAmount = e.amount - payeeGross;
+        (uint256 settled, uint256 settledNet, uint256 settledFee) = _settledTotals(id, e.feeBps);
+        uint256 remainder = e.amount - settled;
+
+        uint256 payeeGross = (remainder * payeeBps) / BPS_DENOMINATOR;
+        uint256 payerAmount = remainder - payeeGross;
         (uint256 payeeNet, uint256 fee) = _split(payeeGross, e.feeBps);
 
         if (payeeNet > 0) _deliver(e.payee, payeeNet);
@@ -360,7 +533,7 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
             accruedFees += fee;
         }
 
-        emit DisputeResolved(id, payeeNet, payerAmount, fee);
+        emit DisputeResolved(id, settledNet + payeeNet, payerAmount, settledFee + fee);
     }
 
     /**
@@ -384,7 +557,11 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
 
         e.state = State.Refunded;
 
-        _deliver(e.payer, e.amount);
+        // Milestone escrow: only the UNSETTLED remainder returns — slices
+        // the payer already confirmed stay with the payee. A plain escrow
+        // has no settled slices, so this refunds the full amount (v2).
+        (uint256 settled,,) = _settledTotals(id, e.feeBps);
+        _deliver(e.payer, e.amount - settled);
 
         emit EscrowRefunded(id, true);
     }
@@ -406,6 +583,30 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
         token.safeTransfer(to, amount);
 
         emit PaymentWithdrawn(msg.sender, to, amount);
+    }
+
+    /**
+     * @notice Anchor a piece of evidence to this escrow: emit its hash on
+     *         chain. The artifact itself never touches the chain — only
+     *         `keccak256(artifact)` and a short note do — so anyone can
+     *         later prove the file existed at that moment by hashing it
+     *         again and matching the log. Discovery stays log-based: no
+     *         server stores the evidence, and the event is append-only.
+     *
+     * @param evidenceHash keccak256 of the artifact (file, message log,
+     *                     delivery receipt). Zero hash is rejected — it
+     *                     would anchor nothing.
+     * @param note         Short label for the timeline (<= 256 bytes).
+     * @dev Any party (payer, payee, arbiter) may file evidence, in ANY
+     *      state — including terminal ones: the record outlives the deal.
+     */
+    function submitEvidence(uint256 id, bytes32 evidenceHash, string calldata note) external {
+        Escrow storage e = _get(id);
+        if (msg.sender != e.payer && msg.sender != e.payee && msg.sender != e.arbiter) revert NotEscrowParty();
+        if (evidenceHash == bytes32(0)) revert EmptyEvidenceHash();
+        if (bytes(note).length > MAX_DESCRIPTION_BYTES) revert DescriptionTooLong();
+
+        emit EvidenceSubmitted(id, msg.sender, evidenceHash, note);
     }
 
     // ---------------------------------------------------------------
@@ -514,6 +715,36 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
         );
     }
 
+    /// @notice Milestone slices of `id` — empty for a plain escrow, so the
+    ///         same view serves both shapes. Reverts for unknown ids.
+    function getMilestones(uint256 id) external view returns (Milestone[] memory) {
+        if (id == 0 || id >= _nextId) revert EscrowNotFound(id);
+        return _milestones[id];
+    }
+
+    /**
+     * @notice Digest a `Release` signature must cover, releasing milestone
+     *         `index` of escrow `id`. The UI shows it and the payer rebuilds
+     *         the same typed data independently — neither side has to trust
+     *         the other's UI.
+     * @dev Reads {releaseNonces} for this escrow's `index` slot.
+     */
+    function releaseDigest(uint256 id, uint256 index) public view returns (bytes32) {
+        bytes32 structHash = keccak256(abi.encode(_RELEASE_TYPEHASH, id, index, releaseNonces[id][index]));
+        return keccak256(abi.encode("\x19\x01", domainSeparator(), structHash));
+    }
+
+    /**
+     * @notice Digest a `ReleaseAll` signature must cover — releases every
+     *         remaining slice (or the whole principal of a plain escrow).
+     *         Uses its own nonce slot so it never collides with a milestone
+     *         release signed for the same escrow.
+     */
+    function releaseAllDigest(uint256 id) public view returns (bytes32) {
+        bytes32 structHash = keccak256(abi.encode(_RELEASE_ALL_TYPEHASH, id, releaseNonces[id][type(uint256).max]));
+        return keccak256(abi.encode("\x19\x01", domainSeparator(), structHash));
+    }
+
     // ---------------------------------------------------------------
     // Internals
     // ---------------------------------------------------------------
@@ -564,6 +795,113 @@ contract EscrowLink is ReentrancyGuard, Pausable, Ownable2Step {
     function _get(uint256 id) private view returns (Escrow storage e) {
         if (id == 0 || id >= _nextId) revert EscrowNotFound(id);
         e = _escrows[id];
+    }
+
+    /**
+     * @dev Release everything still outstanding: the whole principal for a
+     *      plain escrow, every unsettled slice for a milestone one. Called
+     *      by {confirm} and {confirmWithSig} — one code path, so a direct
+     *      call and a signed call can never diverge. Sets the terminal state
+     *      before any transfer (effects before interactions).
+     */
+    function _confirmAll(uint256 id, Escrow storage e) private {
+        e.state = State.Completed;
+
+        Milestone[] storage ms = _milestones[id];
+        if (ms.length == 0) {
+            // Plain escrow: identical to v2 — one split, one transfer.
+            (uint256 payeeAmount, uint256 fee) = _split(e.amount, e.feeBps);
+            _deliver(e.payee, payeeAmount);
+            if (fee > 0) {
+                accruedFees += fee;
+            }
+            emit EscrowConfirmed(id, payeeAmount, fee);
+            return;
+        }
+
+        // Milestone escrow: settle each remaining slice, one transfer for
+        // the batch (gas), one event per slice (the ledger stays per-milestone),
+        // then the cumulative EscrowConfirmed the timeline already expects.
+        uint256 released;
+        uint256 releasedFee;
+        for (uint256 i = 0; i < ms.length; ++i) {
+            if (ms[i].settled) continue;
+            ms[i].settled = true;
+            (uint256 net, uint256 fee) = _split(ms[i].amount, e.feeBps);
+            released += net;
+            releasedFee += fee;
+            emit MilestoneSettled(id, i, net, fee);
+        }
+
+        if (released > 0) _deliver(e.payee, released);
+        if (releasedFee > 0) accruedFees += releasedFee;
+
+        (uint256 totalNet, uint256 totalFee) = _totals(id, e.feeBps);
+        emit EscrowConfirmed(id, totalNet, totalFee);
+    }
+
+    /**
+     * @dev Release ONE milestone slice. Sets the terminal state before the
+     *      transfer when this was the last unsettled slice, so a completed
+     *      milestone escrow reports the same cumulative {EscrowConfirmed}
+     *      totals as a batch {confirm}.
+     */
+    function _settleMilestone(uint256 id, Escrow storage e, uint256 index) private {
+        Milestone[] storage ms = _milestones[id];
+        if (index >= ms.length) revert MilestoneNotFound(id, index);
+        if (ms[index].settled) revert MilestoneAlreadySettled(id, index);
+
+        ms[index].settled = true;
+        (uint256 net, uint256 fee) = _split(ms[index].amount, e.feeBps);
+
+        // Was that the last one? Close the escrow before moving money.
+        bool complete = true;
+        for (uint256 i = 0; i < ms.length; ++i) {
+            if (!ms[i].settled) {
+                complete = false;
+                break;
+            }
+        }
+        if (complete) e.state = State.Completed;
+
+        _deliver(e.payee, net);
+        if (fee > 0) accruedFees += fee;
+
+        emit MilestoneSettled(id, index, net, fee);
+        if (complete) {
+            (uint256 totalNet, uint256 totalFee) = _totals(id, e.feeBps);
+            emit EscrowConfirmed(id, totalNet, totalFee);
+        }
+    }
+
+    /// @dev Cumulative (net, fee) across ALL slices — the totals an
+    ///      {EscrowConfirmed} on a milestone escrow must report, whether the
+    ///      escrow closed one slice at a time or in a batch.
+    function _totals(uint256 id, uint256 feeBps_) private view returns (uint256 net, uint256 fee) {
+        Milestone[] storage ms = _milestones[id];
+        for (uint256 i = 0; i < ms.length; ++i) {
+            (uint256 n, uint256 f) = _split(ms[i].amount, feeBps_);
+            net += n;
+            fee += f;
+        }
+    }
+
+    /// @dev (already settled gross, its net to payee, its fee) across the
+    ///      slices released so far. A plain escrow reports (0, 0, 0), so the
+    ///      timeout refund and the dispute split reduce exactly to v2.
+    function _settledTotals(uint256 id, uint256 feeBps_)
+        private
+        view
+        returns (uint256 gross, uint256 net, uint256 fee)
+    {
+        Milestone[] storage ms = _milestones[id];
+        for (uint256 i = 0; i < ms.length; ++i) {
+            if (!ms[i].settled) continue;
+            gross += ms[i].amount;
+            (uint256 n, uint256 f) = _split(ms[i].amount, feeBps_);
+            net += n;
+            fee += f;
+        }
     }
 
     /**

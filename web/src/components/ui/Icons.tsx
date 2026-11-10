@@ -172,6 +172,28 @@ export function IconScales(props: IconProps) {
   );
 }
 
+/** Pennant on a pole — a milestone slice, defined then released. */
+export function IconFlag(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 6 V43" />
+      <path d="M12 9 H38 L31 17 L38 25 H12" />
+    </Glyph>
+  );
+}
+
+/** Sealed page — evidence anchored to the record by its hash. */
+export function IconSeal(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 5 H30 L38 13 V43 H12 Z" />
+      <path d="M30 5 V13 H38" />
+      <circle cx="25" cy="30" r="6" />
+      <path d="M25 27 V33 M22 30 H28" />
+    </Glyph>
+  );
+}
+
 /** Registration diamond with a struck plus — a new record filed. */
 export function IconCreated(props: IconProps) {
   return (

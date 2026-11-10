@@ -50,12 +50,17 @@ caller's memory.
 | --- | --- | --- | --- |
 | `createEscrow` | — (new id) | anyone | writes `EscrowCreated`, `Created` |
 | `createEscrowHandshaked` | — (new id) | anyone | as above, after verifying the payee + arbiter EIP-712 signatures |
+| `createEscrowMilestones` | — (new id) | anyone | as above with the amount = sum of milestone slices, `MilestoneAdded` per slice |
 | `fund` | `Created` | payer | pulls USDC, exact-amount check, `Funded` |
 | `cancel` | `Created` | payer | `Cancelled`, nothing was locked |
-| `confirm` | `Funded` | payer | pays payee, accrues fee, `Completed` |
+| `confirm` | `Funded` | payer | pays payee (on a milestone escrow: every remaining slice), accrues fee, `Completed` |
+| `confirmWithSig` | `Funded` | **anyone** with the payer's EIP-712 `ReleaseAll` signature | same effect as `confirm`, relayer pays the gas |
+| `confirmMilestone` | `Funded` | payer | pays one slice; the last slice to settle closes the escrow |
+| `confirmMilestoneWithSig` | `Funded` | **anyone** with the payer's EIP-712 `Release` signature for that index | same effect, relayer pays the gas |
 | `openDispute` | `Funded` | payer or payee | `Disputed`, stamps `disputedAt` |
-| `resolveDispute` | `Disputed` | arbiter | splits by `payeeBps`, `Completed` |
-| `claimTimeout` | `Funded` or `Disputed` | **anyone** | after `deadline + 48h` (and, if disputed, after the arbiter window), refunds payer, `Refunded` |
+| `resolveDispute` | `Disputed` | arbiter | splits the UNSETTLED remainder by `payeeBps`, `Completed`/`Refunded` |
+| `claimTimeout` | `Funded` or `Disputed` | **anyone** | after `deadline + 48h` (and, if disputed, after the arbiter window), refunds the UNSETTLED remainder, `Refunded` |
+| `submitEvidence` | any incl. terminal | payer, payee or arbiter | event-only: emits `EvidenceSubmitted(id, by, evidenceHash, note)` |
 | `withdrawPending` | credit > 0 | the credited account | pulls a share that could not be pushed, to any clean address |
 
 Terminal states (`Completed`, `Cancelled`, `Refunded`) reject every further
@@ -150,6 +155,83 @@ documented paths, it just arrives via pull instead of push. Effects precede
 interactions (the credit is zeroed before the transfer) and the function is
 `nonReentrant`, so a re-entering token finds nothing left to take.
 
+## 2c. v3 milestones, evidence and gasless release
+
+### Milestone escrows
+
+`createEscrowMilestones(payee, amounts[], dues[], titles[], deadline,
+description, arbiter)` splits the principal into 1..`MAX_MILESTONES (12)`
+slices. Invariants by construction:
+
+- **The escrow amount IS the sum.** Each slice is a positive
+  `MilestoneAmountZero(i)`-checked integer; funding locks exactly that sum.
+- **The `Escrow` struct never changed.** Milestones live in a parallel
+  `mapping(uint256 => Milestone[])`, so the deployed v2 ABI is byte-identical:
+  one frontend, one ABI file, both generations. `getMilestones(id)` returns
+  an empty array for a plain escrow, so every read path serves both shapes.
+- **Milestone `due` is informational.** A slice's target may not exceed the
+  escrow deadline (`MilestoneDueAfterDeadline(i)`), but the chain never
+  enforces it — the escrow-level deadline plus the 48-hour grace remains the
+  only timeout. A missed milestone can never strand funds the plain timeout
+  rule would have freed, and waiting never invents a new distribution.
+- **Titles are bounded** (`MilestoneTitleTooLong(i)`, 96 bytes) so a slice
+  label can never bloat the event log.
+
+Settlement semantics:
+
+- `confirmMilestone(id, index)` releases ONE slice (`MilestoneSettled(id,
+  index, net, fee)`). When the last unsettled slice settles, the escrow
+  transitions to `Completed` in the same call and emits `EscrowConfirmed`
+  with **cumulative** totals.
+- `confirm(id)` releases every remaining slice in ONE transfer (batched for
+  gas), one `MilestoneSettled` per slice (the ledger stays per-milestone),
+  then a cumulative `EscrowConfirmed(id, totalNet, totalFee)` — the exact
+  event shape the v2 timeline already consumes.
+- `claimTimeout` refunds only the **unsettled remainder**: slices the payer
+  already confirmed stay with the payee.
+- `resolveDispute` splits only the unsettled remainder, and its event reports
+  CUMULATIVE totals, so `payeeAmount + payerAmount + fee == amount` holds for
+  every escrow, milestone or not. A plain escrow has no settled slices, so
+  all three paths reduce exactly to v2 (proven by the unchanged v2 suite).
+
+### Gasless release (EIP-712)
+
+The payer signs off-chain; ANYBODY may submit the signature and pay the gas —
+typically the payee who is waiting on the money:
+
+```
+Release(uint256 id, uint256 index, uint256 nonce)     // one milestone
+ReleaseAll(uint256 id, uint256 nonce)                 // every remaining slice
+domain: EIP712Domain(name = "Bond EscrowLink", version = "1", chainId, verifyingContract)
+```
+
+Safety properties, each enforced by construction:
+
+- **Single use.** Nonces live per escrow, per slot: `Release` signs slot
+  `index`, `ReleaseAll` signs slot `type(uint256).max`. The digest binds the
+  current value and the value moves before effects, so one signature files
+  one release; distinct slots mean a pre-signed milestone release and a
+  pre-signed `ReleaseAll` never invalidate each other, and a signature for
+  slice 0 can never settle slice 1 (`index` is inside the typed struct).
+- **Bound to this chain and this contract** — same domain as the handshake.
+- **Two wallet types** — same `_isValidSignature` path as v2: audited ECDSA
+  for EOAs, ERC-1271 staticcall for contract wallets; failure reverts with
+  `InvalidReleaseSignature` before any state is written.
+- `releaseDigest(id, index)` / `releaseAllDigest(id)` are exposed views so
+  the payer's wallet can rebuild the typed data independently.
+
+### Evidence anchoring
+
+`submitEvidence(id, evidenceHash, note)` is **event-only**: the artifact
+never touches the chain, only `keccak256(artifact)` and a short note (<= 256
+bytes) do. Anyone holding the file can later hash it again and match the log
+— proof of existence with zero server storage, append-only, consistent with
+log-based discovery.
+
+- Any party (payer, payee, arbiter) may file (`NotEscrowParty`), in ANY
+  state including terminal ones: the record outlives the deal.
+- `EmptyEvidenceHash` rejects a zero hash — it would anchor nothing.
+
 ## 3. Fees
 
 - `feeBps` defaults to `50` (0.5%), hard-capped at `MAX_FEE_BPS = 1_000` (10%).
@@ -157,7 +239,10 @@ interactions (the credit is zeroed before the transfer) and the function is
   snapshots its own `feeBps` at creation** — a later change can never alter an
   existing escrow. That removes the "owner rugs the fee mid-flight" vector.
 - Settlement splits through one pure helper, `_split(gross, feeBps_)`, used by
-  `confirm` and `resolveDispute` so the arithmetic cannot drift between paths.
+  `confirm`, `confirmMilestone` and `resolveDispute` so the arithmetic cannot
+  drift between paths. On a milestone escrow each slice is split
+  individually, and `_totals`/`_settledTotals` reassemble the cumulative
+  figures the events report.
 - Fees are **pull-accrued**: `accruedFees` increases only when an escrow
   settles; `withdrawFees(to)` moves only that balance. `NothingToWithdraw`
   guards the empty case.
@@ -288,7 +373,8 @@ rewrites: `/?view=create`, `/?view=records`, `/?escrow=2`,
 
 | Layer | Tool | What it covers |
 | --- | --- | --- |
-| Contract unit/fuzz | `forge test` (56 tests) | state transitions, auth, fee math, deadline bounds, pause, two-step ownership |
+| Contract unit/fuzz | `forge test` (101 tests) | state transitions, auth, fee math, deadline bounds, pause, two-step ownership |
+| v3 unit/fuzz | `EscrowLinkMilestones.t.sol` (35 tests) | milestone validation, per-slice + batch settlement, cumulative event invariants, remainder-only timeout/dispute, gasless release (nonce replay, index binding, ERC-1271), evidence rules |
 | Invariants | `EscrowLink.invariant.t.sol` | principal conservation under random call sequences |
 | Token edges | `test/mocks/` | fee-on-transfer USDC, standard mock |
 | Types | `tsc --noEmit` | whole frontend |
@@ -313,6 +399,11 @@ every surface says exactly that.
 
 - Contract v2: EIP-712 three-party handshake, arbiter-timeout escape from
   `Disputed`, permissionless sweep, blacklist rescue, `feeBps` in
-  `EscrowCreated`.
+  `EscrowCreated`. **Shipped and deployed.**
+- Contract v3: milestone escrows (`createEscrowMilestones`, per-slice +
+  batch settlement with cumulative totals), evidence anchoring
+  (`submitEvidence`), EIP-712 gasless release (`confirmWithSig`,
+  `confirmMilestoneWithSig`). **Implemented and tested (101/101); frontend
+  integration pending.**
 - Evidence dossier, reputation badges, transparency ticker, QR/share links,
   `.ics` deadline reminders, presets, watch-only links.

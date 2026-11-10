@@ -12,6 +12,9 @@ import { EscrowTimeline } from "./EscrowTimeline";
 import { EvidenceDossier } from "./EvidenceDossier";
 import { ContractVerifyCard } from "./ContractVerifyCard";
 import { ShareCard } from "./ShareCard";
+import { MilestonesCard } from "./MilestonesCard";
+import { GaslessReleaseCard } from "./GaslessReleaseCard";
+import { EvidenceAnchorCard } from "./EvidenceAnchorCard";
 import { ESCROW_ABI, ESCROW_STATE_NAMES, USDC_ADDRESS } from "../../lib/contracts";
 import { escrowAddressFor } from "../../lib/contracts";
 import { getContractLedger, reputationFor, reputationBadge, type LedgerEntry } from "../../lib/reputation";
@@ -444,6 +447,19 @@ export function EscrowDetailView({
         />
       )}
 
+      {/* ── v3: the slice ledger — empty card for plain escrows ── */}
+      <MilestonesCard
+        id={id}
+        chainId={chainId}
+        contract={contract}
+        feeBps={record.feeBps}
+        stateName={stateName}
+        role={role}
+        watchOnly={watchOnly}
+        tx={tx}
+        act={act}
+      />
+
       {/* ── Transaction feedback ─────────────────────────── */}
       <TxStatusCard
         state={approvalTx}
@@ -615,6 +631,11 @@ export function EscrowDetailView({
         </div>
       )}
 
+      {/* ── v3: sign off-chain, file with anyone's gas ──────── */}
+      {!terminal && stateName === "Funded" && !watchOnly && (
+        <GaslessReleaseCard id={id} chainId={chainId} contract={contract} role={role} tx={tx} act={act} />
+      )}
+
       {/* ── Breakdown & links ────────────────────────────── */}
       <div className="row gap-4" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
         <div className="card card--flat" style={{ flex: "1 1 300px" }}>
@@ -685,6 +706,9 @@ export function EscrowDetailView({
         terms={record.description}
         watchOnly={watchOnly}
       />
+
+      {/* ── v3: hash-only evidence anchoring, any state ────── */}
+      <EvidenceAnchorCard id={id} role={role} watchOnly={watchOnly} tx={tx} act={act} />
 
       {/* ── Audit trail: what happened, provable from logs ── */}
       <EscrowTimeline id={id} chainId={chainId} refreshToken={`${stateName}:${record.state}`} />

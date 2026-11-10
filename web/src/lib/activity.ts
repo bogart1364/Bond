@@ -63,7 +63,10 @@ export type TimelineKind =
   | "EscrowConfirmed"
   | "EscrowRefunded"
   | "DisputeOpened"
-  | "DisputeResolved";
+  | "DisputeResolved"
+  | "MilestoneAdded"
+  | "MilestoneSettled"
+  | "EvidenceSubmitted";
 
 export interface TimelineEntry {
   kind: TimelineKind;
@@ -85,8 +88,16 @@ export interface TimelineEntry {
   payerAmount?: bigint;
   /** EscrowRefunded. */
   byTimeout?: boolean;
-  /** DisputeOpened. */
+  /** DisputeOpened / EvidenceSubmitted. */
   by?: Address;
+  /** MilestoneAdded / MilestoneSettled. */
+  index?: bigint;
+  /** MilestoneAdded only. */
+  due?: bigint;
+  title?: string;
+  /** EvidenceSubmitted only. */
+  evidenceHash?: `0x${string}`;
+  note?: string;
 }
 
 /**
@@ -317,6 +328,19 @@ export async function getEscrowTimeline(
         entry.payeeAmount = BigInt(a.payeeAmount as bigint);
         entry.payerAmount = BigInt(a.payerAmount as bigint);
         entry.fee = BigInt(a.fee as bigint);
+      } else if (kind === "MilestoneAdded") {
+        entry.index = BigInt(a.index as bigint);
+        entry.amount = BigInt(a.amount as bigint);
+        entry.due = BigInt(a.due as bigint);
+        entry.title = String(a.title ?? "");
+      } else if (kind === "MilestoneSettled") {
+        entry.index = BigInt(a.index as bigint);
+        entry.payeeAmount = BigInt(a.payeeAmount as bigint);
+        entry.fee = BigInt(a.fee as bigint);
+      } else if (kind === "EvidenceSubmitted") {
+        entry.by = a.by as Address;
+        entry.evidenceHash = a.evidenceHash as `0x${string}`;
+        entry.note = String(a.note ?? "");
       }
 
       fresh.push(entry);
@@ -362,9 +386,14 @@ export async function getEscrowTimeline(
   return entries;
 }
 
-/** Dedupe key: a reorg-free chain still needs one, and tx+kind is unique. */
+/**
+ * Dedupe key: a reorg-free chain still needs one, and tx+kind is unique —
+ * EXCEPT for milestone events, which repeat inside a single transaction
+ * (all `MilestoneAdded` share the creation tx, a batch `confirm` emits one
+ * `MilestoneSettled` per slice), so their `index` joins the key.
+ */
 function timelineKey(e: TimelineEntry): string {
-  return `${e.txHash}:${e.kind}`;
+  return e.index === undefined ? `${e.txHash}:${e.kind}` : `${e.txHash}:${e.kind}:${e.index}`;
 }
 
 const KIND_SET: ReadonlySet<TimelineKind> = new Set<TimelineKind>([
@@ -375,6 +404,9 @@ const KIND_SET: ReadonlySet<TimelineKind> = new Set<TimelineKind>([
   "EscrowRefunded",
   "DisputeOpened",
   "DisputeResolved",
+  "MilestoneAdded",
+  "MilestoneSettled",
+  "EvidenceSubmitted",
 ]);
 
 /**
@@ -400,5 +432,11 @@ export function eventLabel(e: TimelineEntry): string {
       return `Dispute opened by ${e.by ?? "unknown"}`;
     case "DisputeResolved":
       return `Arbiter resolved - payee ${formatUsdc(e.payeeAmount ?? 0n)}, payer ${formatUsdc(e.payerAmount ?? 0n)}, fee ${formatUsdc(e.fee ?? 0n)}`;
+    case "MilestoneAdded":
+      return `Milestone ${e.index !== undefined ? Number(e.index) + 1 : "?"} added - ${e.title ? `${e.title}, ` : ""}${formatUsdc(e.amount ?? 0n)} USDC`;
+    case "MilestoneSettled":
+      return `Milestone ${e.index !== undefined ? Number(e.index) + 1 : "?"} released - ${formatUsdc(e.payeeAmount ?? 0n)} USDC to payee, ${formatUsdc(e.fee ?? 0n)} USDC fee`;
+    case "EvidenceSubmitted":
+      return `Evidence anchored by ${e.by ?? "unknown"}${e.note ? ` - ${e.note}` : ""}`;
   }
 }

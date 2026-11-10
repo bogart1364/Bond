@@ -7,9 +7,11 @@ import {
   IconCreated,
   IconCross,
   IconExternal,
+  IconFlag,
   IconLock,
   IconRefund,
   IconScales,
+  IconSeal,
   IconWarning,
 } from "../../components/ui/Icons";
 import { escrowAddressFor } from "../../lib/contracts";
@@ -42,6 +44,16 @@ const COPY: Record<TimelineEntry["kind"], (e: TimelineEntry) => string> = {
     `Arbiter resolved — payee ${formatUsdc(e.payeeAmount ?? 0n)}, payer ${formatUsdc(
       e.payerAmount ?? 0n,
     )}, fee ${formatUsdc(e.fee ?? 0n)}`,
+  MilestoneAdded: (e) =>
+    `Milestone ${e.index !== undefined ? Number(e.index) + 1 : "?"} defined — ${
+      e.title ? `${e.title}, ` : ""
+    }${formatUsdc(e.amount ?? 0n)} USDC`,
+  MilestoneSettled: (e) =>
+    `Milestone ${e.index !== undefined ? Number(e.index) + 1 : "?"} released — ${formatUsdc(
+      e.payeeAmount ?? 0n,
+    )} USDC to the payee, ${formatUsdc(e.fee ?? 0n)} USDC fee`,
+  EvidenceSubmitted: (e) =>
+    `Evidence anchored by ${shortAddress(e.by ?? "0x")}${e.note ? ` — ${e.note}` : ""}`,
 };
 
 /** Engraved mark per event kind — SVG glyphs, never emoji (see Icons.tsx). */
@@ -53,6 +65,9 @@ const KIND_MARK: Record<TimelineEntry["kind"], ReactNode> = {
   EscrowRefunded: <IconRefund size={16} strokeWidth={3} />,
   DisputeOpened: <IconWarning size={16} strokeWidth={3} />,
   DisputeResolved: <IconScales size={16} strokeWidth={3} />,
+  MilestoneAdded: <IconFlag size={16} strokeWidth={3} />,
+  MilestoneSettled: <IconFlag size={16} strokeWidth={3} />,
+  EvidenceSubmitted: <IconSeal size={16} strokeWidth={3} />,
 };
 
 export function EscrowTimeline({
