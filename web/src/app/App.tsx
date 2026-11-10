@@ -502,7 +502,10 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
           ))}
         </div>
 
-        {/* The stack: official marks of the brands Bond runs on */}
+        {/* The stack: official marks of the brands Bond runs on —
+            a logo line only, no tiles, no captions: the label says
+            "Built on" and the marks carry the rest. Titles and
+            aria-labels keep the names for people, not the eyes. */}
         <div className="footer-brands">
           <span className="footer-brands__label">Built on</span>
           <ul className="footer-brands__list">
@@ -512,10 +515,10 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 href="https://base.org"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="Base — chain 8453"
+                aria-label="Base — chain 8453"
               >
-                <MarkBase />
-                Base
-                <span className="footer-brands__meta">Chain 8453</span>
+                <MarkBase size={18} />
               </a>
             </li>
             <li>
@@ -524,10 +527,10 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 href="https://www.circle.com/usdc"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="USDC — settles it"
+                aria-label="USDC — settles it"
               >
-                <MarkUsdc />
-                USDC
-                <span className="footer-brands__meta">Settles it</span>
+                <MarkUsdc size={18} />
               </a>
             </li>
             <li>
@@ -536,10 +539,10 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 href="https://www.openzeppelin.com"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="OpenZeppelin — contract libs"
+                aria-label="OpenZeppelin — contract libs"
               >
-                <MarkOpenZeppelin />
-                OpenZeppelin
-                <span className="footer-brands__meta">Contract libs</span>
+                <MarkOpenZeppelin size={17} />
               </a>
             </li>
             <li>
@@ -548,10 +551,10 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 href="https://getfoundry.sh"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="Foundry — tests"
+                aria-label="Foundry — tests"
               >
-                <MarkFoundry />
-                Foundry
-                <span className="footer-brands__meta">Tests</span>
+                <MarkFoundry size={19} />
               </a>
             </li>
             <li>
@@ -560,10 +563,10 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 href="https://sourcify.dev"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="Sourcify — source verified"
+                aria-label="Sourcify — source verified"
               >
-                <MarkSourcify />
-                Sourcify
-                <span className="footer-brands__meta">Source verified</span>
+                <MarkSourcify size={18} />
               </a>
             </li>
             <li>
@@ -572,10 +575,10 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 href="https://github.com/bogart1364/Bond"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="GitHub — open source"
+                aria-label="GitHub — open source"
               >
-                <MarkGitHub />
-                GitHub
-                <span className="footer-brands__meta">Open source</span>
+                <MarkGitHub size={17} />
               </a>
             </li>
             <li>
@@ -584,10 +587,10 @@ function SiteFooter({ chainId, contract }: { chainId: number; contract?: `0x${st
                 href="https://vercel.com"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="Vercel — deployed on"
+                aria-label="Vercel — deployed on"
               >
-                <MarkVercel />
-                Vercel
-                <span className="footer-brands__meta">Deployed on</span>
+                <MarkVercel size={15} />
               </a>
             </li>
           </ul>

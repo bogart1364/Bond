@@ -5,9 +5,9 @@ import type { SVGProps } from "react";
  * never restyled: each path below is the geometry the brand publishes.
  *
  * Coloured marks keep their brand fills (Base blue #0052FF, USDC #2775ca,
- * Sourcify's #2B50AA roundel). Monochrome marks take `currentColor`, which
- * on the footer's ink plate resolves to the cream link colour in both
- * editions — the mark stays legible on night paper without being recoloured.
+ * Sourcify's #2B50AA roundel). Monochrome marks take `currentColor`, so the
+ * muted logo line in the footer dims them together and the hover clears
+ * them back to full ink — the mark is never recoloured, only dimmed.
  */
 type MarkProps = SVGProps<SVGSVGElement> & { size?: number };
 
@@ -51,14 +51,14 @@ export function MarkUsdc({ size = 16, ...rest }: MarkProps) {
   );
 }
 
-/** OpenZeppelin — the three bands, monochrome on plate. */
-export function MarkOpenZeppelin({ size = 16, ...rest }: MarkProps) {
+/** OpenZeppelin — the three bands, monochrome so the logo line dims them with the rest. */
+export function MarkOpenZeppelin({ size = 17, ...rest }: MarkProps) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="var(--plate-bright)"
+      fill="currentColor"
       aria-hidden="true"
       focusable="false"
       {...rest}
