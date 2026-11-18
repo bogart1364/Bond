@@ -353,9 +353,10 @@ means in context instead of string-matching.
 ### Routing
 
 Query parameters, not paths — the app is a static bundle with no server
-rewrites: `/?view=create`, `/?view=records`, `/?escrow=2`,
-`/?view=doc&doc=docs`. Landing, create, records and detail views are
-`React.lazy`-split so the first chunk stays small.
+rewrites: `/?view=create`, `/?view=request`, `/?view=records`,
+`/?view=dossier&address=0x…`, `/?escrow=2`, `/?view=doc&doc=docs`. Landing,
+create, request, records, dossier and detail views are `React.lazy`-split
+so the first chunk stays small.
 
 ### Accessibility and layout invariants
 
@@ -403,7 +404,10 @@ every surface says exactly that.
 - Contract v3: milestone escrows (`createEscrowMilestones`, per-slice +
   batch settlement with cumulative totals), evidence anchoring
   (`submitEvidence`), EIP-712 gasless release (`confirmWithSig`,
-  `confirmMilestoneWithSig`). **Implemented and tested (101/101); frontend
-  integration pending.**
+  `confirmMilestoneWithSig`). **Shipped, deployed and verified on Base
+  mainnet and Sepolia; frontend integrated (create form, detail view,
+  dossier).**
 - Evidence dossier, reputation badges, transparency ticker, QR/share links,
-  `.ics` deadline reminders, presets, watch-only links.
+  `.ics` deadline reminders, presets, watch-only links. **Shipped** —
+  including the reputation dossier (`?view=dossier`) and the payment-request
+  link + QR builder (`?view=request`).

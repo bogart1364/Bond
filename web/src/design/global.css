@@ -609,10 +609,14 @@ textarea.field__input {
 }
 
 /* ── Masthead nav ───────────────────────────────────────── */
+/* Six sections live here now (Create, Request, My records, Dossier, How it
+   works, Docs) alongside the edition switch and the wallet button. The bar
+   is capped at --content-max, so every pixel of gap is budgeted: at 20px the
+   widest arrangement still clears the gutter on a 1160px measure. */
 .mast-nav {
   display: flex;
   align-items: center;
-  gap: 26px;
+  gap: 20px;
 }
 
 .mast-nav a {
@@ -736,9 +740,26 @@ textarea.field__input {
 }
 
 /* ── Masthead responsive: date -> nav -> menu ───────────────── */
-@media (max-width: 1000px) {
+/* The edition line is the first thing to go: it costs ~150px and says
+   nothing an escrow needs. Hidden from 1160 down so the six-link nav and
+   the wallet button keep the full measure between here and the fold. */
+@media (max-width: 1160px) {
   .mast-date {
     display: none;
+  }
+}
+
+/* Between the breakpoint where the date drops and the one where the nav
+   folds into the menu, six sections plus the edition switch crowd the bar.
+   Tighten the letterspacing here so the wallet button can never spill past
+   the gutter — a clipped primary action is worse than a tighter masthead. */
+@media (max-width: 1100px) {
+  .mast-nav {
+    gap: 16px;
+  }
+  .mast-nav a {
+    font-size: 10px;
+    letter-spacing: 0.1em;
   }
 }
 

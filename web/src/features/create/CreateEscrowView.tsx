@@ -15,7 +15,9 @@ import {
   buildEscrowLink,
 } from "../../lib/contracts";
 import { chainLabel, asChainId } from "../../lib/chains";
-import { formatUsdc } from "../../lib/format";
+import { formatUsdc, shortAddress } from "../../lib/format";
+import { parseRequestPrefill, type RequestPrefill } from "../../lib/requestLink";
+import { PresetRow, SpecRow } from "./CreateBits";
 import { EscrowCreatedCard } from "./EscrowCreatedCard";
 
 interface FormValues {
@@ -131,6 +133,23 @@ function validate(
   return e;
 }
 
+/**
+ * Overlay a parsed payment request onto the blank form.
+ *
+ * Only the fields the link actually carried are copied: an omitted
+ * description keeps the default, and a parameter that failed validation
+ * was already dropped by the parser rather than pasted in as garbage.
+ */
+function overlayRequest(r: RequestPrefill): FormValues {
+  return {
+    payee: r.payee ?? EMPTY.payee,
+    amount: r.amount ?? EMPTY.amount,
+    deadlineDays: r.deadlineDays ?? EMPTY.deadlineDays,
+    description: r.description ?? EMPTY.description,
+    arbiter: r.arbiter ?? EMPTY.arbiter,
+  };
+}
+
 export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string}`; chainId: number }) {
   const { address, isConnected } = useAccount();
   // Bound to the active chain (a bare call defaults to Base mainnet).
@@ -138,7 +157,12 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
   const { data: walletClient } = useWalletClient();
   const toast = useToast();
 
-  const [values, setValues] = useState<FormValues>(EMPTY);
+  // A payment request arrives in the URL (?view=create&payee=…&amount=…).
+  // Read it once, before first paint, so the form opens already filled in
+  // instead of flashing empty; `validate()` re-checks every field anyway.
+  const [request] = useState(() => parseRequestPrefill(window.location.search));
+  const [requestNote, setRequestNote] = useState(request !== null);
+  const [values, setValues] = useState<FormValues>(() => (request ? overlayRequest(request) : EMPTY));
   const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
   const [tx, setTx] = useState<TxState>(IDLE_TX);
   const [createdId, setCreatedId] = useState<bigint | null>(null);
@@ -339,10 +363,42 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
   }
 
   const show = (k: keyof FormValues) => touched[k] && errors[k];
+
+  // One readable line for the alert's "What happened?" detail.
+  const requestSummary = !request
+    ? ""
+    : [
+        request.payee ? `payee ${shortAddress(request.payee)}` : null,
+        request.amount ? `${request.amount} USDC` : null,
+        request.deadlineDays ? `${request.deadlineDays} days` : null,
+        request.arbiter ? `arbiter ${shortAddress(request.arbiter)}` : null,
+        request.description ? `desc ${request.description}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
   const rowError = (i: number) => (rowsTouched || formAttempted ? errors.rows?.[i] : undefined);
 
   return (
     <div className="stack gap-8">
+      {/* ── Payment request carried in from a shared link ─── */}
+      {requestNote && request && (
+        <AlertBox
+          variant="info"
+          title="Payment request loaded"
+          description={
+            request.dropped.length
+              ? "This link carried a payment request and the readable terms are already filled in below. Some parameters could not be read and were left blank — check them before you sign."
+              : "This link carried a payment request. The terms below arrived prefilled — review them, connect a wallet, and create the escrow."
+          }
+          details={
+            request.dropped.length
+              ? `Ignored in this link: ${request.dropped.join(", ")}.`
+              : `Request terms: ${requestSummary}.`
+          }
+          onDismiss={() => setRequestNote(false)}
+        />
+      )}
+
       {/* ── Hero: front page ─────────────────────────────── */}
       <div style={{ borderBottom: "4px double var(--border-ink)", paddingBottom: 36 }}>
         <div
@@ -373,6 +429,10 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
             >
               Create a USDC escrow on Base, share the link, and let the smart contract hold the money until the
               work is delivered. Non-custodial — Bond never touches your funds.
+            </p>
+            <p className="small muted" style={{ marginTop: 16, maxWidth: 640, lineHeight: 1.7 }}>
+              Getting paid instead? <a href="?view=request">Issue a payment request</a> — a link and a QR code
+              that opens this same form with the terms already typed in.
             </p>
           </div>
 
@@ -872,69 +932,5 @@ export function CreateEscrowView({ contract, chainId }: { contract?: `0x${string
   );
 }
 
-/**
- * One line of quick-fill chips. Purely a convenience — every value can
- * still be typed by hand, and the chip only writes to its own field.
- */
-function PresetRow({
-  label,
-  options,
-  active,
-  onPick,
-}: {
-  label: string;
-  options: readonly { value: string; label: string }[];
-  active: string;
-  onPick: (value: string) => void;
-}) {
-  return (
-    <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-      <span
-        className="mono"
-        style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-3)" }}
-      >
-        {label}
-      </span>
-      <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-        {options.map((o) => {
-          const isActive = active === o.value;
-          return (
-            <button
-              key={o.value}
-              type="button"
-              className={`mono tnum ${isActive ? "preset preset--on" : "preset"}`}
-              aria-pressed={isActive}
-              onClick={() => onPick(o.value)}
-              style={{ fontSize: 11, letterSpacing: "0.06em" }}
-            >
-              {o.label}
-            </button>
-          );
-        })}
-      </span>
-    </div>
-  );
-}
 
-/** One row of the architectural spec table. */
-function SpecRow({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  return (
-    <div
-      className="row"
-      style={{
-        justifyContent: "space-between",
-        gap: 16,
-        padding: "10px 14px",
-        borderBottom: last ? "none" : "1px solid var(--border)",
-      }}
-    >
-      <span className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)" }}>
-        {k}
-      </span>
-      <span className="mono tnum" style={{ fontSize: 12.5, fontWeight: 500, color: "var(--text-1)" }}>
-        {v}
-      </span>
-    </div>
-  );
-}
 

@@ -27,6 +27,8 @@ const COPYRIGHT_YEAR = new Date().getFullYear();
 const CreateEscrowView = lazy(() => import("../features/create/CreateEscrowView").then((m) => ({ default: m.CreateEscrowView })));
 const EscrowDetailView = lazy(() => import("../features/escrow/EscrowDetailView").then((m) => ({ default: m.EscrowDetailView })));
 const MyRecordsView = lazy(() => import("../features/records/MyRecordsView").then((m) => ({ default: m.MyRecordsView })));
+const DossierView = lazy(() => import("../features/dossier/DossierView").then((m) => ({ default: m.DossierView })));
+const RequestBuilder = lazy(() => import("../features/create/RequestBuilder").then((m) => ({ default: m.RequestBuilder })));
 
 /** Fallback while a route chunk loads — same skeleton the views use. */
 function RouteFallback() {
@@ -57,6 +59,8 @@ export function App() {
   const watchOnly = search.get("watch") === "1";
   const showRecords = view === "records";
   const showCreate = view === "create";
+  const showDossier = view === "dossier";
+  const showRequest = view === "request";
   const docSlug: DocSlug = isDocSlug(search.get("doc")) ? (search.get("doc") as DocSlug) : "about";
   const showDoc = view === "doc";
   const contract = escrowAddressFor(chainId);
@@ -99,7 +103,7 @@ export function App() {
 
   // The landing prints the full colophon; every other page gets the strip
   // footer carrying this page's own folio instead of the site-wide links.
-  const isLanding = escrowId === null && !showRecords && !showDoc && !showCreate;
+  const isLanding = escrowId === null && !showRecords && !showDoc && !showCreate && !showDossier && !showRequest;
 
   const folio: PageFolio =
     escrowId !== null
@@ -108,14 +112,23 @@ export function App() {
           detail: contract ? shortAddress(contract) : `No deployment on ${chainLabel(chainId)}`,
           detailHref: contract ? explorerAddressUrl(chainId, contract) : undefined,
         }
-      : showRecords
+      : showDossier
+        ? {
+            title: "Reputation dossier",
+            detail: search.get("address")
+              ? `File for ${shortAddress(search.get("address") as string)}`
+              : "Public record — any address, counted from event logs",
+          }
+        : showRecords
         ? {
             title: "My records",
             detail: address ? `Inbox for ${shortAddress(address)}` : "Connect a wallet to load your records",
           }
         : showCreate
           ? { title: "Create escrow", detail: "Draft — nothing locks until the payer signs" }
-          : { title: DOC_TITLES[docSlug], detail: DOC_FOLIO[docSlug] };
+          : showRequest
+            ? { title: "Payment request", detail: "Terms only — the payer signs the escrow" }
+            : { title: DOC_TITLES[docSlug], detail: DOC_FOLIO[docSlug] };
 
   return (
     <div style={{ minHeight: "100%", display: "flex", flexDirection: "column" }}>
@@ -167,7 +180,11 @@ export function App() {
 
           <nav className="mast-nav">
             <a href="?view=create">Create</a>
+            <a href="?view=request" title="Build a payment request link and QR code">
+              Request
+            </a>
             <a href="?view=records">My records</a>
+            <a href="?view=dossier">Dossier</a>
             <a href="/#how">How it works</a>
             <a href="?view=doc&doc=docs">Docs</a>
           </nav>
@@ -204,8 +221,14 @@ export function App() {
               <a href="?view=create" onClick={() => setMenuOpen(false)}>
                 Create escrow
               </a>
+              <a href="?view=request" onClick={() => setMenuOpen(false)}>
+                Payment request
+              </a>
               <a href="?view=records" onClick={() => setMenuOpen(false)}>
                 My records
+              </a>
+              <a href="?view=dossier" onClick={() => setMenuOpen(false)}>
+                Reputation dossier
               </a>
               <a href="/#how" onClick={() => setMenuOpen(false)}>
                 How it works
@@ -281,6 +304,10 @@ export function App() {
             <div className="page">
               <MyRecordsView chainId={chainId} onOpen={(id) => (window.location.href = `?escrow=${id}`)} />
             </div>
+          ) : showDossier ? (
+            <div className="page">
+              <DossierView chainId={chainId} onOpen={(id) => (window.location.href = `?escrow=${id}`)} />
+            </div>
           ) : showDoc ? (
             <div className="page">
               <DocsView slug={docSlug} chainId={chainId} />
@@ -288,6 +315,10 @@ export function App() {
           ) : showCreate ? (
             <div className="page">
               <CreateEscrowView contract={contract} chainId={chainId} />
+            </div>
+          ) : showRequest ? (
+            <div className="page">
+              <RequestBuilder />
             </div>
           ) : (
             /* Landing owns its own measure + full-bleed ticker/CTA bands. */
@@ -334,7 +365,9 @@ function columnsFor(chainId: number, contract?: `0x${string}`): FooterColumn[] {
       title: "Product",
       links: [
         { label: "Create escrow", href: "?view=create" },
+        { label: "Payment request", href: "?view=request" },
         { label: "My records", href: "?view=records" },
+        { label: "Reputation dossier", href: "?view=dossier" },
         { label: "How it works", href: "/#how" },
         // The fee schedule lives in the docs ("Funds, custody and fees"),
         // not in the verify section this used to point at.

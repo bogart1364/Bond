@@ -773,6 +773,14 @@ function PartyRow({
           </span>
         )}
         <a
+          href={`?view=dossier&address=${address}`}
+          className="small mono"
+          style={{ fontWeight: 570, whiteSpace: "nowrap", color: "var(--text-2)" }}
+          title={`Reputation dossier for ${address}`}
+        >
+          dossier
+        </a>
+        <a
           href={explorerAddressUrl(chainId, address)}
           target="_blank"
           rel="noopener noreferrer"
