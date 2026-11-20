@@ -1,6 +1,7 @@
 import type { Abi, Address, Hash } from "viem";
 import type { PublicClient, WalletClient } from "viem";
 import { simulateContract, writeContract } from "viem/actions";
+import { DATA_SUFFIX } from "./attribution";
 import { isNodeSideFailure, toUserError, type UserError } from "./errors";
 
 /**
@@ -72,6 +73,9 @@ export async function runTx(args: WriteArgs, ctx: TxContext, setState: SetTxStat
       functionName: args.functionName,
       args: (args.args ?? []) as never,
       value: args.value,
+      // ERC-8021: viem appends this to calldata after simulation; the
+      // contract ignores the trailing bytes, indexers read the code.
+      dataSuffix: DATA_SUFFIX,
       chain: null,
     } as never;
 
