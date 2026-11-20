@@ -265,6 +265,34 @@ export function IconDot(props: IconProps) {
   );
 }
 
+/** Edition switch, open — the day print run. Tattoo-flash eye: a heavy
+    almond, a solid pupil and three sparks struck off the lid. */
+export function IconEyeOpen(props: IconProps) {
+  return (
+    <Glyph strokeWidth={4} {...props}>
+      {/* flash sparks struck off the lid */}
+      <path d="M24 2 V11 M7 4 L13 12 M41 4 L35 12" />
+      {/* the almond, cut heavy */}
+      <path d="M3 26 C12 12 36 12 45 26 C36 40 12 40 3 26 Z" />
+      {/* pupil struck solid */}
+      <circle cx="24" cy="26" r="6" fill="currentColor" stroke="none" />
+    </Glyph>
+  );
+}
+
+/** Edition switch, shut with lashes — Shabnameh, the night press.
+    Same flash hand: one heavy lid, three thorn lashes off it. */
+export function IconEyeClosed(props: IconProps) {
+  return (
+    <Glyph strokeWidth={4} {...props}>
+      {/* the shut lid, one thick stroke */}
+      <path d="M4 20 C13 35 35 35 44 20" />
+      {/* three thorn lashes */}
+      <path d="M12 28 L9 40 M24 33 L24 44 M36 28 L39 40" />
+    </Glyph>
+  );
+}
+
 /** Two plain sheets, offset — the duplicate/copy mark. */
 export function IconCopy(props: IconProps) {
   return (

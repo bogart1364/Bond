@@ -6,7 +6,7 @@ import { CardSkeleton } from "../components/ui/Feedback";
 import { LandingView } from "../features/landing/LandingView";
 import { DocsView } from "../features/docs/DocsView";
 import { isDocSlug, DOC_TITLES, DOC_FOLIO, type DocSlug } from "../features/docs/docsMeta";
-import { IconExternal, IconMenu } from "../components/ui/Icons";
+import { IconExternal, IconMenu, IconEyeOpen, IconEyeClosed } from "../components/ui/Icons";
 import { MarkBase, MarkUsdc, MarkOpenZeppelin, MarkFoundry, MarkSourcify, MarkGitHub, MarkVercel } from "../components/ui/BrandMarks";
 import { escrowAddressFor, ESCROW_ABI, parseEscrowLink, homeChainId } from "../lib/contracts";
 import { isSupportedChain, chainLabel, explorerAddressUrl } from "../lib/chains";
@@ -63,6 +63,15 @@ export function App() {
   const showRequest = view === "request";
   const docSlug: DocSlug = isDocSlug(search.get("doc")) ? (search.get("doc") as DocSlug) : "about";
   const showDoc = view === "doc";
+
+  // "How it works" is an in-page anchor: it changes the hash without a
+  // navigation, so it needs its own listener to keep the nav honest.
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const contract = escrowAddressFor(chainId);
   const supported = isSupportedChain(chainId);
   // Chain we are deployed on — the only valid switch target.
@@ -86,7 +95,6 @@ export function App() {
 
   // Edition switch: day print run or Shabnameh night press.
   const { theme, toggleTheme } = useTheme();
-  const themeLabel = theme === "dark" ? "DAY" : "NIGHT";
   const themeAction = theme === "dark" ? "Switch to the day edition" : "Switch to the night edition";
 
   // Escape folds the mobile menu back up, matching the modal behaviour.
@@ -104,6 +112,22 @@ export function App() {
   // The landing prints the full colophon; every other page gets the strip
   // footer carrying this page's own folio instead of the site-wide links.
   const isLanding = escrowId === null && !showRecords && !showDoc && !showCreate && !showDossier && !showRequest;
+
+  // Which masthead link the reader is standing in — `null` on the landing
+  // page and on an escrow record, where no section owns the view.
+  const activeNav = showCreate
+    ? "create"
+    : showRequest
+      ? "request"
+      : showRecords
+        ? "records"
+        : showDossier
+          ? "dossier"
+          : showDoc
+            ? "doc"
+            : isLanding && hash === "#how"
+              ? "how"
+              : null;
 
   const folio: PageFolio =
     escrowId !== null
@@ -179,14 +203,28 @@ export function App() {
           <div style={{ flex: 1 }} />
 
           <nav className="mast-nav">
-            <a href="?view=create">Create</a>
-            <a href="?view=request" title="Build a payment request link and QR code">
+            <a href="?view=create" aria-current={activeNav === "create" ? "page" : undefined}>
+              Create
+            </a>
+            <a
+              href="?view=request"
+              title="Build a payment request link and QR code"
+              aria-current={activeNav === "request" ? "page" : undefined}
+            >
               Request
             </a>
-            <a href="?view=records">My records</a>
-            <a href="?view=dossier">Dossier</a>
-            <a href="/#how">How it works</a>
-            <a href="?view=doc&doc=docs">Docs</a>
+            <a href="?view=records" aria-current={activeNav === "records" ? "page" : undefined}>
+              My records
+            </a>
+            <a href="?view=dossier" aria-current={activeNav === "dossier" ? "page" : undefined}>
+              Dossier
+            </a>
+            <a href="/#how" aria-current={activeNav === "how" ? "page" : undefined}>
+              How it works
+            </a>
+            <a href="?view=doc&doc=docs" aria-current={activeNav === "doc" ? "page" : undefined}>
+              Docs
+            </a>
           </nav>
 
           <button
@@ -200,14 +238,18 @@ export function App() {
             <span className="mast-menu-label">{menuOpen ? "Close" : "Menu"}</span>
           </button>
 
+          {/* The edition switch speaks in one eye: open for the day print
+              run, shut with lashes for Shabnameh. The words live in
+              aria-label and title — an icon-only control still needs a
+              name for screen readers and for the tooltip. */}
           <button
             type="button"
-            className="btn btn--secondary btn--sm mast-theme"
+            className="btn btn--secondary mast-theme"
             onClick={toggleTheme}
             aria-label={themeAction}
             title={themeAction}
           >
-            {themeLabel}
+            {theme === "dark" ? <IconEyeClosed size={20} /> : <IconEyeOpen size={20} />}
           </button>
 
           <WalletButton />
@@ -218,22 +260,22 @@ export function App() {
           <div className="mast-panel" id="mast-panel">
             <div className="mast-panel__date">{edition}</div>
             <nav className="mast-panel__links" aria-label="Sections">
-              <a href="?view=create" onClick={() => setMenuOpen(false)}>
+              <a href="?view=create" onClick={() => setMenuOpen(false)} aria-current={activeNav === "create" ? "page" : undefined}>
                 Create escrow
               </a>
-              <a href="?view=request" onClick={() => setMenuOpen(false)}>
+              <a href="?view=request" onClick={() => setMenuOpen(false)} aria-current={activeNav === "request" ? "page" : undefined}>
                 Payment request
               </a>
-              <a href="?view=records" onClick={() => setMenuOpen(false)}>
+              <a href="?view=records" onClick={() => setMenuOpen(false)} aria-current={activeNav === "records" ? "page" : undefined}>
                 My records
               </a>
-              <a href="?view=dossier" onClick={() => setMenuOpen(false)}>
+              <a href="?view=dossier" onClick={() => setMenuOpen(false)} aria-current={activeNav === "dossier" ? "page" : undefined}>
                 Reputation dossier
               </a>
-              <a href="/#how" onClick={() => setMenuOpen(false)}>
+              <a href="/#how" onClick={() => setMenuOpen(false)} aria-current={activeNav === "how" ? "page" : undefined}>
                 How it works
               </a>
-              <a href="?view=doc&doc=docs" onClick={() => setMenuOpen(false)}>
+              <a href="?view=doc&doc=docs" onClick={() => setMenuOpen(false)} aria-current={activeNav === "doc" ? "page" : undefined}>
                 Docs
               </a>
             </nav>
@@ -245,6 +287,7 @@ export function App() {
                 aria-label={themeAction}
                 title={themeAction}
               >
+                {theme === "dark" ? <IconEyeClosed size={15} /> : <IconEyeOpen size={15} />}
                 {theme === "dark" ? "Day edition" : "Night edition"}
               </button>
             </div>

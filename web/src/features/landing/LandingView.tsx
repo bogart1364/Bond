@@ -386,12 +386,14 @@ export function LandingView({ chainId }: { chainId: number }) {
               </span>
             </div>
 
-            {/* The seal sits squarely in the middle of the sheet, fully
-                inside the box: the print wipe (clip-path) clips anything
-                that hangs over the edge, which used to cut it in half. It
-                rides the spec box's own reveal — a nested observer inside a
-                clip-path ancestor would never fire. */}
-            <div className="ld-hero__stamp-slot">
+            {/* The seal closes the sheet like the stamp at the foot of a
+                filed document: its own row, centred under the table, so it
+                never sits on top of a value. Overlaying the middle of the
+                sheet used to cover Protocol fee and Escrows filed — the two
+                numbers a reader comes for. It rides the spec box's own
+                reveal — a nested observer inside a clip-path ancestor
+                would never fire. */}
+            <div className="ld-hero__stamp-row">
               <span
                 className="ld-hero__stamp ld-stamp"
                 style={{ "--d": "950ms" } as React.CSSProperties}

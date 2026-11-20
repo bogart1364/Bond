@@ -237,27 +237,37 @@ html {
   font-size: var(--text-sm);
   font-weight: 650;
   text-align: right;
-  word-break: break-all;
+  /* Wrap at spaces first — break-all used to slice "per escrow" into
+     "per es / crow". Only a token too long for the column (the contract
+     address) is allowed to break mid-word. */
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
-/* The seal sits squarely in the middle of the spec sheet, fully inside
-   the box: the print wipe (clip-path on .ld-print) clips anything that
-   hangs over the edge — a corner placement used to cut it in half. The
-   slot is a transparent overlay so the seal centres on the whole sheet. */
-.ld-hero__stamp-slot {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none; /* the contract link underneath stays clickable */
-  z-index: 2;
+/* The seal closes the sheet instead of lying across it. It used to be an
+   absolute overlay centred on the whole box, which put the NON-CUSTODIAL
+   stamp directly on top of Protocol fee and Escrows filed. Now it is a
+   real row under the table — the way a clerk stamps the foot of a filed
+   document — so no value is ever occluded. Centred: the sheet is only a
+   few hundred pixels wide, and the slam-down overshoot has to stay inside
+   the print wipe's clip-path. */
+.ld-hero__stamp-row {
+  display: flex;
+  justify-content: center;
+  padding-top: 16px;
+  padding-bottom: 2px;
 }
 
 .ld-hero__stamp {
   --rot: -7deg;
-  border: 3px solid var(--brand);
-  color: var(--brand);
-  background: rgba(244, 240, 230, 0.93);
+  /* Softer approach than the default 1.75x: the sheet is narrow, and a
+     wider overshoot would be sliced off by the reveal's clip-path. */
+  transform: rotate(calc(var(--rot) - 12deg)) scale(1.32);
+  border: 3px solid var(--stamp-ink);
+  color: var(--stamp-ink);
+  /* The sheet's own stock, not a hardcoded cream: in the night edition the
+     seal prints as ink on dark paper instead of pasting on a white chip. */
+  background: var(--bg-card);
   /* letter-spacing trails the last glyph — pad the left back so the seal
      optically centres itself */
   padding: 11px 22px 11px calc(22px + 0.3em);
@@ -269,8 +279,8 @@ html {
   white-space: nowrap;
   /* double-rule seal: outer border, newsprint gap, thin inner line */
   box-shadow:
-    inset 0 0 0 2px rgba(244, 240, 230, 0.95),
-    inset 0 0 0 3.5px var(--brand);
+    inset 0 0 0 2px var(--bg-card),
+    inset 0 0 0 3.5px var(--stamp-ink);
 }
 
 /* ── Ticker: the running header strip ────────────────────── */
@@ -414,7 +424,9 @@ html {
   font-size: 52px;
   line-height: 1;
   letter-spacing: -0.03em;
-  color: var(--border-strong);
+  /* Not a hairline colour: these are the step numbers, and on night stock
+     --border-strong fell to 2.1:1 under a 52px glyph. */
+  color: var(--text-3);
 }
 
 .ld-step h3 {
@@ -440,8 +452,24 @@ html {
   border: 1px solid var(--border-strong);
   padding: 26px;
   position: relative;
+  /* The same dry layer every .card carries: the grid sits on the page
+     instead of being drawn flat onto it. */
+  box-shadow: var(--shadow-card);
   transition: border-color var(--dur-base) var(--ease), transform var(--dur-base) var(--ease),
     box-shadow var(--dur-base) var(--ease);
+}
+
+/* On point the press stamps a Base-blue rule across the top edge —
+   second ink laid down, not a colour swap. */
+.ld-feat::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  height: 3px;
+  width: 0;
+  background: var(--brand);
+  transition: width var(--dur-base) var(--ease);
 }
 
 .ld-feat:hover {
@@ -450,10 +478,16 @@ html {
   box-shadow: var(--shadow-card-hover);
 }
 
+.ld-feat:hover::before {
+  width: calc(100% + 2px);
+}
+
 /* Feature marks: brand plates carrying the engraved glyph, not little
    emoji. The glyph fills with the plate colour (--icon-bg) where it must
-   occlude shapes behind it — see Icons.tsx. Kept compact: a stamp, not
-   a billboard. */
+   occlude shapes behind it — see Icons.tsx — so the face stays flat
+   blue and the depth comes from the edges: a lit top hairline and a
+   printed bottom one, the same two rules the buttons wear. Kept
+   compact: a stamp, not a billboard. */
 .ld-feat__mark {
   --icon-bg: var(--brand);
   display: grid;
@@ -463,15 +497,22 @@ html {
   margin-bottom: 16px;
   background: var(--brand);
   color: var(--on-brand);
-  border: 1px solid var(--border-ink);
-  /* letterpress: a hard ink offset, no blur — nothing soft in a print shop */
-  box-shadow: 3px 3px 0 rgba(22, 19, 15, 0.16);
+  border: 1px solid rgba(0, 0, 0, 0.32);
+  /* letterpress: a hard ink offset, no blur — nothing soft in a print
+     shop; the token falls to black on night stock so it still reads */
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    3px 3px 0 var(--plate-offset);
   transition: transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
 }
 
 .ld-feat:hover .ld-feat__mark {
   transform: translate(-2px, -2px);
-  box-shadow: 5px 5px 0 rgba(22, 19, 15, 0.2);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    5px 5px 0 var(--plate-offset-hover);
 }
 
 /* One line at any width: single column below 640, two columns above

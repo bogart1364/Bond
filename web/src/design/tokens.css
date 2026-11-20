@@ -15,6 +15,9 @@
   --brand-softer: #f3f7ff;
   --brand-ink: #001f5c;
   --accent: #24417f;
+  /* Stamp ink: the seal's own blue. Base blue clears contrast on day
+     stock; the night press needs it lightened (see the dark edition). */
+  --stamp-ink: var(--brand);
 
   /* ── Surfaces: aged newsprint ─────────────────────────── */
   --bg-page: #e7e2d6;
@@ -28,7 +31,10 @@
   /* ── Text: printer's ink ──────────────────────────────── */
   --text-1: #16130f;
   --text-2: #4c463b;
-  --text-3: #7c7566;
+  /* Was #7c7566: 4.0:1 on the sheet stock, under the 4.5 floor for the
+     10–11px labels that use it. Darkened to clear 4.5 on both the card
+     and the page while staying clearly the third ink. */
+  --text-3: #66604f;
   --text-inverse: #f4f0e6;
   --text-brand: #0043d4;
 
@@ -69,7 +75,35 @@
   --shadow-card: 0 1px 0 rgba(22, 19, 15, 0.05), 0 16px 30px -28px rgba(22, 19, 15, 0.65);
   --shadow-card-hover: 0 1px 0 rgba(22, 19, 15, 0.07), 0 24px 40px -28px rgba(22, 19, 15, 0.7);
   --shadow-pop: 0 22px 54px -28px rgba(22, 19, 15, 0.6);
-  --shadow-btn: 0 6px 14px -10px rgba(0, 82, 255, 0.85);
+
+  /* ── Buttons: a type plate with a glass face ──────────────
+     Radius stays 0 — printed plates are sharp — but the face is
+     built in layers instead of being one flat swatch: a top-lit
+     gradient, an inner highlight hairline, a printed edge below
+     and a two-layer shadow. Secondary buttons use the translucent
+     --btn-face-* stack with a backdrop blur, so they read as
+     frosted glass rather than as a disabled control. */
+  --btn-h: 48px;
+  --btn-h-sm: 40px;
+  --btn-face-top: rgba(255, 255, 255, 0.2);
+  --btn-face-mid: rgba(255, 255, 255, 0.04);
+  --btn-face-bot: rgba(22, 19, 15, 0.1);
+  --btn-face-hover-top: rgba(255, 255, 255, 0.36);
+  --btn-face-hover-mid: rgba(255, 255, 255, 0.12);
+  --btn-face-hover-bot: rgba(22, 19, 15, 0.05);
+  --btn-edge: rgba(255, 255, 255, 0.32);
+  --btn-blur: 10px;
+  --btn-plate: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.32);
+  --shadow-btn: 0 10px 22px -14px rgba(0, 82, 255, 0.95), 0 2px 0 rgba(0, 0, 0, 0.26);
+  --shadow-btn-hover: 0 18px 34px -14px rgba(0, 82, 255, 1), 0 4px 0 rgba(0, 0, 0, 0.28);
+  --shadow-btn-soft: inset 0 1px 0 var(--btn-edge), 0 8px 18px -14px rgba(22, 19, 15, 0.9);
+  --shadow-btn-soft-hover: inset 0 1px 0 var(--btn-edge), 0 14px 26px -14px rgba(22, 19, 15, 1);
+
+  /* Letterpress: a hard ink offset under a brand plate — no blur, because
+     nothing in a print shop is soft. On night stock the same offset has
+     to fall to black or it simply vanishes into the page. */
+  --plate-offset: rgba(22, 19, 15, 0.16);
+  --plate-offset-hover: rgba(22, 19, 15, 0.22);
 
   /* ── Type ─────────────────────────────────────────────── */
   --font-display: "Playfair Display", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
@@ -182,6 +216,10 @@
   --text-2: #b5afa1;
   --text-3: #8b8577;
 
+  /* Stamp ink: Base blue does not clear contrast on night paper, so the
+     seal prints in the lighter blue the focus ring already uses. */
+  --stamp-ink: #6f9bff;
+
   /* ── Hairlines: rules print cream on night paper ─────── */
   --border: #33302a;
   --border-soft: #2a2721;
@@ -210,6 +248,24 @@
   --info-soft: #17202f;
   --info-border: #33436a;
   --info-solid: #274073;
+
+  /* ── Button faces on night paper ────────────────────────
+     The highlight inverts: light reads from above on day stock,
+     so the glass face on dark stock is a top rim, not a sheen. */
+  --btn-face-top: rgba(255, 255, 255, 0.13);
+  --btn-face-mid: rgba(255, 255, 255, 0.03);
+  --btn-face-bot: rgba(0, 0, 0, 0.4);
+  --btn-face-hover-top: rgba(255, 255, 255, 0.24);
+  --btn-face-hover-mid: rgba(255, 255, 255, 0.08);
+  --btn-face-hover-bot: rgba(0, 0, 0, 0.32);
+  --btn-edge: rgba(255, 255, 255, 0.22);
+  --btn-plate: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  --shadow-btn-soft: inset 0 1px 0 var(--btn-edge), 0 8px 18px -14px rgba(0, 0, 0, 1);
+  --shadow-btn-soft-hover: inset 0 1px 0 var(--btn-edge), 0 14px 26px -14px rgba(0, 0, 0, 1);
+
+  /* Letterpress offset on night stock: black, or the plate floats free. */
+  --plate-offset: rgba(0, 0, 0, 0.7);
+  --plate-offset-hover: rgba(0, 0, 0, 0.85);
 }
 
 .tnum {
