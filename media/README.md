@@ -5,6 +5,9 @@
 
 ## Music credit
 
-"Deadly Roulette" by Kevin MacLeod (incompetech.com)
-Licensed under Creative Commons: By Attribution 4.0
-https://creativecommons.org/licenses/by/4.0/
+None required. The bed is **"A Body In The Alley"** by Patrick Davies, dedicated to the
+public domain under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
+and sourced from the Free Music Archive. No attribution is needed, but the artist is
+credited here as a courtesy.
+
+Original: https://freemusicarchive.org/music/patrick-davies/single/a-body-in-the-alley
