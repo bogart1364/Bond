@@ -1,0 +1,67 @@
+1
+00:00:00,550 --> 00:00:06,574
+This is Bond, a non-custodial escrow for USDC, printed directly on Base.
+
+2
+00:00:07,674 --> 00:00:11,370
+Paying for work online still runs on trust.
+
+3
+00:00:11,550 --> 00:00:17,526
+Invoices disappear, deposits vanish, and nobody prints the proof of who owes what.
+
+4
+00:00:18,626 --> 00:00:22,154
+Bond replaces that trust with a contract.
+
+5
+00:00:22,334 --> 00:00:27,614
+The payee writes the terms into a link: amount, deadline, and arbiter.
+
+6
+00:00:27,794 --> 00:00:32,498
+The payer reviews it, signs, and the contract locks the funds.
+
+7
+00:00:33,598 --> 00:00:38,278
+The work is delivered, and on confirmation, the money releases.
+
+8
+00:00:38,458 --> 00:00:43,546
+Disputes go to a single arbiter, and every deadline opens a way out.
+
+9
+00:00:44,646 --> 00:00:49,542
+Inside the paper: milestone escrows that settle slice by slice.
+
+10
+00:00:49,722 --> 00:00:53,898
+Payment requests that travel as a link and a QR code.
+
+11
+00:00:54,078 --> 00:00:58,062
+A reputation dossier read straight from the ledger.
+
+12
+00:00:58,242 --> 00:01:03,474
+Evidence anchored on chain, and gasless releases signed once, off chain.
+
+13
+00:01:04,574 --> 00:01:09,230
+Non-custodial by design, Bond never touches your funds.
+
+14
+00:01:09,410 --> 00:01:15,626
+Source verified on Sourcify, open source, with a half a percent fee frozen at creation.
+
+15
+00:01:15,806 --> 00:01:19,286
+Not audited, and every page says so.
+
+16
+00:01:20,386 --> 00:01:25,690
+Live now on Base Mainnet and Base Sepolia, with no accounts and no backend.
+
+17
+00:01:26,790 --> 00:01:31,926
+Bond, built for Base. Print your first escrow.
