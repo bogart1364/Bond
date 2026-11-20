@@ -411,3 +411,7 @@ every surface says exactly that.
   `.ics` deadline reminders, presets, watch-only links. **Shipped** —
   including the reputation dossier (`?view=dossier`) and the payment-request
   link + QR builder (`?view=request`).
+- Base Builder Code (ERC-8021): `lib/attribution.ts` appends the project's
+  `dataSuffix` to every write through `lib/tx.ts`. **Code shipped** —
+  activates once `VITE_BUILDER_CODE` is set (project registration on
+  dashboard.base.org pending).
